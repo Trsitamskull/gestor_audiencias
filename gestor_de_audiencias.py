@@ -10,14 +10,18 @@ from gestor_archivos import (
     eliminar_archivo,
     descargar_archivo
 )
+import ttkbootstrap as tb
 
 ARCHIVO_EXCEL = None  # No hay archivo seleccionado al inicio
 FILA_INICIO_DATOS = 11  # Los datos empiezan desde esta fila
 
 # === Interfaz gráfica con tkinter ===
-ventana = tk.Tk()
+ventana = tb.Window(themename="flatly")  # Usa un tema de ttkbootstrap
 ventana.title("Ordenador de Audiencias")
-ventana.configure(bg="#f7f7fa")
+# ventana.configure(bg="#f7f7fa") es innecesario porque el tema ya lo maneja
+ventana.geometry("600x560")  # Tamaño inicial, se ajustará al zoom
+ventana.minsize(600, 560)  # Tamaño mínimo
+ventana.maxsize(1200, 1080)  # Tamaño máximo
 ventana.resizable(True, True)
 
 try:
@@ -123,7 +127,7 @@ combo_realizada = ttk.Combobox(ventana, values=["SI", "NO"], state="readonly", f
 combo_realizada.grid(row=5, column=1, sticky="w", padx=16, pady=8)
 
 # Motivos de no realización
-frame_motivos = tk.LabelFrame(ventana, text="Motivos (si NO se realizó)", font=fuente, bg="#f7f7fa", fg="#333")
+frame_motivos = tk.LabelFrame(ventana, text="Motivos (si NO se realizó)", font=fuente, bg="#f7f7fa")
 frame_motivos.grid(row=6, column=0, columnspan=2, padx=16, pady=16, sticky="ew")
 frame_motivos.columnconfigure((0,1,2,3), weight=1)
 
@@ -420,7 +424,6 @@ label_credito = tk.Label(
     ventana,
     text="© 2025 - Hecho por Jose David Bustamante Sánchez",
     bg="#f7f7fa",
-    fg="#777",
     font=("Segoe UI", 9, "italic")
 )
 label_credito.grid(row=11, column=0, columnspan=2, pady=(0, 16))
