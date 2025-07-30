@@ -1,0 +1,25 @@
+# Ignorar entornos virtuales
+venv/
+
+# Ignorar archivos de caché de Python
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+
+# Ignorar archivos de editor/IDE (ej. VS Code)
+.vscode/
+.idea/
+
+# Ignorar archivos específicos de sistema operativo
+.DS_Store
+Thumbs.db
+
+# Ignorar archivos específicos de Flet
+# Si Flet genera algún archivo temporal o de construcción que no deba versionarse, agrégalo aquí.
+# Por ejemplo, si genera un directorio 'build' o 'dist'
+# build/
+# dist/
+
+# Ignorar logs u otros archivos generados en runtime
+*.log

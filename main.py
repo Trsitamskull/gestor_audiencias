@@ -15,27 +15,29 @@ from pathlib import Path
 proyecto_root = Path(__file__).parent
 sys.path.insert(0, str(proyecto_root))
 
+
 def main():
     """Función principal que inicia la aplicación."""
     try:
-        # Importar la ventana principal
-        from gui.main_window import VentanaPrincipal
-        
+        # Importar la ventana principal con Flet
+        from gui.main_window import ejecutar_app
+
         # Crear y ejecutar la aplicación
-        print("Iniciando Gestor de Audiencias...")
-        app = VentanaPrincipal()
-        app.ejecutar()
-        
+        print("Iniciando Gestor de Audiencias con Flet...")
+        ejecutar_app()
+
     except ImportError as e:
         print(f"Error de importación: {e}")
         print("Asegúrese de que todas las dependencias estén instaladas.")
-        print("Ejecute: pip install openpyxl ttkbootstrap")
+        print("Ejecute: pip install flet openpyxl")
         sys.exit(1)
     except Exception as e:
         print(f"Error inesperado: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
