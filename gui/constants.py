@@ -23,19 +23,20 @@ class ThemeColors:
         # Superficies
         "surface_primary": "#FFFFFF",
         "surface_secondary": "#F8FAFC",
-        "surface_tertiary": "#F9FAFB",
-        "surface_border": "#E5E7EB",
+        "surface_tertiary": "#F1F5F9",
+        "surface_border": "#9CA3AF",      # Gris más oscuro para bordes más definidos
         "surface_card": "#FFFFFF",
         
-        # Texto
-        "text_primary": "#1F2937",
-        "text_secondary": "#6B7280", 
-        "text_muted": "#9CA3AF",
-        "text_on_primary": "#FFFFFF",
+        # Texto - Mejorado para mejor contraste
+        "text_primary": "#000000",      # Negro puro para máximo contraste
+        "text_secondary": "#374151",    # Gris más oscuro para subtítulos
+        "text_muted": "#6B7280",       # Gris medio para texto menos importante
+        "text_on_primary": "#FFFFFF",  # Blanco sobre fondos de color
         
         # Estados
         "success": "#059669",
         "success_light": "#ECFDF5",
+        "danger": "#DC2626",       # Rojo para botones de peligro (eliminar)
         "error": "#DC2626", 
         "error_light": "#FEF2F2",
         "warning": "#F59E0B",
@@ -71,15 +72,15 @@ class ThemeColors:
         # Estados
         "success": "#10B981",
         "success_light": "#064E3B",
-        "danger": "#F97316",       # Naranja suave para botones de peligro
-        "error": "#F97316",        # Naranja suave en lugar de rojo
-        "error_light": "#9A3412",  # Naranja oscuro en lugar de rojo oscuro
+        "danger": "#DC2626",       # Rojo para botones de peligro (eliminar)
+        "error": "#DC2626",        # Rojo para mensajes de error/información
+        "error_light": "#7F1D1D",  # Rojo más oscuro para fondos
         "warning": "#F59E0B",
         "warning_light": "#78350F",
         
         # Específicos
-        "motivo_bg": "#9A3412",    # Naranja oscuro en lugar de rojo
-        "motivo_border": "#C2410C", # Naranja medio en lugar de rojo
+        "motivo_bg": "#7F1D1D",    # Rojo más oscuro para fondos
+        "motivo_border": "#DC2626", # Rojo principal
         "header_bg": "#374151",
         "form_bg": "#111827",
     }
@@ -208,6 +209,70 @@ def get_container_style():
             offset=ft.Offset(0, 2),
         )
     }
+
+def get_action_bar_style():
+    """Estilo para la barra de acciones sticky"""
+    colors = get_theme_colors()
+    return {
+        "bgcolor": colors["surface_card"],
+        "border_radius": 12,
+        "border": ft.border.all(1, colors["surface_border"]),
+        "padding": ft.padding.symmetric(horizontal=20, vertical=12),
+        "shadow": ft.BoxShadow(
+            spread_radius=0,
+            blur_radius=6,
+            color="#00000020" if current_theme == "light" else "#00000040",
+            offset=ft.Offset(0, 2),
+        )
+    }
+
+def get_action_button_primary():
+    """Estilo para botón de acción principal en la barra"""
+    colors = get_theme_colors()
+    return ft.ButtonStyle(
+        bgcolor=colors["primary"],
+        color=colors["text_on_primary"],
+        elevation=2,
+        shape=ft.RoundedRectangleBorder(radius=8),
+        padding=ft.Padding(16, 10, 16, 10),
+        text_style=ft.TextStyle(size=13, weight=ft.FontWeight.W_600),
+    )
+
+def get_action_button_secondary():
+    """Estilo para botón de acción secundario en la barra"""
+    colors = get_theme_colors()
+    return ft.ButtonStyle(
+        bgcolor=colors["surface_tertiary"],
+        color=colors["text_primary"],
+        elevation=1,
+        shape=ft.RoundedRectangleBorder(radius=8),
+        padding=ft.Padding(16, 10, 16, 10),
+        text_style=ft.TextStyle(size=13, weight=ft.FontWeight.W_500),
+    )
+
+def get_action_button_success():
+    """Estilo para botón de éxito en la barra"""
+    colors = get_theme_colors()
+    return ft.ButtonStyle(
+        bgcolor=colors["success"],
+        color=colors["text_on_primary"],
+        elevation=2,
+        shape=ft.RoundedRectangleBorder(radius=8),
+        padding=ft.Padding(16, 10, 16, 10),
+        text_style=ft.TextStyle(size=13, weight=ft.FontWeight.W_600),
+    )
+
+def get_action_button_danger():
+    """Estilo para botón de peligro en la barra"""
+    colors = get_theme_colors()
+    return ft.ButtonStyle(
+        bgcolor=colors["error"],
+        color=colors["text_on_primary"],
+        elevation=2,
+        shape=ft.RoundedRectangleBorder(radius=8),
+        padding=ft.Padding(16, 10, 16, 10),
+        text_style=ft.TextStyle(size=13, weight=ft.FontWeight.W_600),
+    )
 
 # ============================================
 # CONSTANTES LEGACY (Para compatibilidad)

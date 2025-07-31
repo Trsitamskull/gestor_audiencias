@@ -23,6 +23,11 @@ from gui.constants import (
     get_button_style_danger,
     get_field_style,
     get_container_style,
+    get_action_bar_style,
+    get_action_button_primary,
+    get_action_button_secondary,
+    get_action_button_success,
+    get_action_button_danger,
 )
 
 
@@ -247,7 +252,9 @@ class VentanaSeleccionRegistro:
         self._crear_dialogo()
     
     def _crear_dialogo(self):
-        """Crea el diálogo de selección de registro."""
+        """Crea el diálogo de selección de registro con colores dinámicos."""
+        colors = get_theme_colors()
+        
         # Lista de registros como botones
         lista_controles = []
         
@@ -258,14 +265,14 @@ class VentanaSeleccionRegistro:
             btn_registro = ft.Container(
                 content=ft.Row(
                     controls=[
-                        ft.Icon(ft.Icons.EDIT_DOCUMENT, size=20, color="#059669"),
-                        ft.Text(info_text, size=13, color="#1F2937", expand=True),
+                        ft.Icon(ft.Icons.EDIT_DOCUMENT, size=20, color=colors["success"]),
+                        ft.Text(info_text, size=13, color=colors["text_primary"], expand=True),
                         ft.ElevatedButton(
                             text="Editar",
                             on_click=lambda e, fn=fila_num, d=datos: self._on_editar_item(fn, d),
                             style=ft.ButtonStyle(
-                                bgcolor="#059669",
-                                color="#FFFFFF",
+                                bgcolor=colors["success"],
+                                color=colors["text_on_primary"],
                                 shape=ft.RoundedRectangleBorder(radius=6),
                                 padding=ft.Padding(12, 8, 12, 8),
                                 text_style=ft.TextStyle(size=12),
@@ -276,8 +283,8 @@ class VentanaSeleccionRegistro:
                     alignment=ft.MainAxisAlignment.START,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
-                bgcolor="#F9FAFB",
-                border=ft.border.all(1, "#E5E7EB"),
+                bgcolor=colors["surface_tertiary"],
+                border=ft.border.all(1, colors["surface_border"]),
                 border_radius=8,
                 padding=ft.Padding(15, 12, 15, 12),
             )
@@ -288,7 +295,7 @@ class VentanaSeleccionRegistro:
             text="Cancelar",
             on_click=self._on_cancelar,
             style=ft.ButtonStyle(
-                color="#6B7280",
+                color=colors["text_secondary"],
                 padding=ft.Padding(20, 10, 20, 10),
             ),
         )
@@ -310,14 +317,14 @@ class VentanaSeleccionRegistro:
         # Diálogo principal
         self.dialog = ft.AlertDialog(
             modal=True,
-            title=ft.Text("Seleccionar Registro para Editar", size=18, weight=ft.FontWeight.BOLD),
+            title=ft.Text("Seleccionar Registro para Editar", size=18, weight=ft.FontWeight.BOLD, color=colors["text_primary"]),
             content=ft.Container(
                 content=ft.Column(
                     controls=[
                         ft.Text(
                             f"Seleccione uno de los {len(self.registros)} registros disponibles para editar:",
                             size=14,
-                            color="#6B7280",
+                            color=colors["text_secondary"],
                         ),
                         ft.Container(height=15),
                         contenedor_lista,
@@ -329,6 +336,7 @@ class VentanaSeleccionRegistro:
             ),
             actions=[btn_cancelar],
             actions_alignment=ft.MainAxisAlignment.END,
+            bgcolor=colors["surface_card"],
         )
         
         # Mostrar el diálogo
@@ -430,11 +438,22 @@ class VentanaPrincipal:
 
         # Lista de tipos de audiencia
         self.tipos_audiencia = [
+            "-- Seleccione tipo --",
             "Alegatos de conclusión",
             "Audiencia concentrada",
             "Audiencia de acusación",
+            "Audiencia de conciliación",
+            "Audiencia de control de legalidad",
+            "Audiencia de individualización de pena",
+            "Audiencia de imputación",
+            "Audiencia de incidente de reparación integral",
             "Audiencia de juicio oral",
-            "Audiencia de preclusion",
+            "Audiencia de medidas de aseguramiento",
+            "Audiencia de nulidad",
+            "Audiencia de preclusión",
+            "Audiencia de prórroga",
+            "Audiencia de revisión de medida",
+            "Audiencia de verificación de cumplimiento",
             "Audiencia preliminar",
             "Audiencia preparatoria",
             "Otra",
@@ -495,10 +514,11 @@ class VentanaPrincipal:
         
         # Mostrar mensaje de confirmación
         tema_nombre = "Tema Oscuro" if new_theme == "dark" else "Tema Claro"
+        colors = get_theme_colors()
         # Usamos un snack bar simple en lugar del método que aún no definimos
         snack = ft.SnackBar(
-            ft.Text(f"✅ {tema_nombre} activado", color="#FFFFFF"),
-            bgcolor=get_theme_colors()["success"],
+            ft.Text(f"✅ {tema_nombre} activado", color=colors["text_on_primary"]),
+            bgcolor=colors["success"],
         )
         self.page.overlay.append(snack)
         snack.open = True
@@ -513,15 +533,15 @@ class VentanaPrincipal:
             content=ft.Column(
                 controls=[
                     self._crear_header(),
-                    ft.Container(height=15),  # Espaciado reducido
-                    self._crear_formulario(),  # Ahora incluye los botones integrados
-                    ft.Container(height=15),
-                    self._crear_gestion_archivos(),
+                    ft.Container(height=12),  # Espaciado reducido
+                    self._crear_barra_acciones_sticky(),  # Nueva barra de acciones
+                    ft.Container(height=15),  # Espaciado
+                    self._crear_formulario(),  # Formulario sin botones al final
                     ft.Container(height=20),  # Espaciado final
                 ],
                 expand=True,
                 spacing=0,
-                scroll=ft.ScrollMode.HIDDEN,  # Sin scroll
+                scroll=ft.ScrollMode.AUTO,  # Permitir scroll del contenido principal
             ),
             padding=ft.padding.all(25),  # Padding reducido
             bgcolor=colors["surface_secondary"],
@@ -569,7 +589,7 @@ class VentanaPrincipal:
         return ft.Container(
             content=ft.Row(
                 controls=[
-                    # Logo y título principal
+                    # Sección izquierda: Logo y título
                     ft.Row(
                         controls=[
                             ft.Container(
@@ -607,44 +627,8 @@ class VentanaPrincipal:
                         alignment=ft.MainAxisAlignment.START,
                     ),
                     
-                    # Información del archivo (centrado)
-                    ft.Container(
-                        content=ft.Row(
-                            controls=[
-                                ft.Icon(ft.Icons.FOLDER_OUTLINED, size=18, color=colors["primary"]),
-                                self.archivo_actual_text,
-                            ],
-                            spacing=8,
-                            alignment=ft.MainAxisAlignment.CENTER,
-                        ),
-                        bgcolor=colors["surface_tertiary"],
-                        border_radius=20,
-                        padding=ft.padding.symmetric(horizontal=20, vertical=12),
-                        border=ft.border.all(1, colors["surface_border"]),
-                    ),
-                    
-                    # Contador de registros y toggle de tema
-                    ft.Row(
-                        controls=[
-                            ft.Container(
-                                content=ft.Row(
-                                    controls=[
-                                        ft.Icon(ft.Icons.ANALYTICS_OUTLINED, size=18, color=colors["primary"]),
-                                        self.contador_registros,
-                                    ],
-                                    spacing=8,
-                                    alignment=ft.MainAxisAlignment.CENTER,
-                                ),
-                                bgcolor=colors["primary_light"] if not is_dark_theme() else colors["surface_tertiary"],
-                                border_radius=20,
-                                padding=ft.padding.symmetric(horizontal=20, vertical=12),
-                                border=ft.border.all(1, colors["surface_border"]),
-                            ),
-                            btn_theme_toggle,
-                        ],
-                        spacing=10,
-                        alignment=ft.MainAxisAlignment.END,
-                    ),
+                    # Sección derecha: Solo toggle de tema
+                    btn_theme_toggle,
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -665,22 +649,46 @@ class VentanaPrincipal:
         """Crea el formulario principal con diseño de dos columnas sin scroll."""
         colors = get_theme_colors()
         
-        # Título principal del formulario (compacto)
-        titulo_principal = ft.Container(
+        # Barra de información en lugar del título (reemplaza "INFORMACIÓN DE LA AUDIENCIA")
+        barra_informacion = ft.Container(
             content=ft.Row(
                 controls=[
-                    ft.Icon(ft.Icons.EDIT_NOTE_OUTLINED, size=24, color=colors["primary"]),
-                    ft.Text(
-                        "INFORMACIÓN DE LA AUDIENCIA", 
-                        size=18, 
-                        weight=ft.FontWeight.BOLD, 
-                        color=colors["primary"]
+                    # Información del archivo (izquierda)
+                    ft.Container(
+                        content=ft.Row(
+                            controls=[
+                                ft.Icon(ft.Icons.FOLDER_OUTLINED, size=18, color=colors["primary"]),
+                                self.archivo_actual_text,
+                            ],
+                            spacing=8,
+                            alignment=ft.MainAxisAlignment.CENTER,
+                        ),
+                        bgcolor=colors["surface_tertiary"],
+                        border_radius=20,
+                        padding=ft.padding.symmetric(horizontal=20, vertical=12),
+                        border=ft.border.all(1, colors["surface_border"]),
+                    ),
+                    
+                    # Contador de registros (derecha)
+                    ft.Container(
+                        content=ft.Row(
+                            controls=[
+                                ft.Icon(ft.Icons.ANALYTICS_OUTLINED, size=18, color=colors["primary"]),
+                                self.contador_registros,
+                            ],
+                            spacing=8,
+                            alignment=ft.MainAxisAlignment.CENTER,
+                        ),
+                        bgcolor=colors["primary_light"] if not is_dark_theme() else colors["surface_tertiary"],
+                        border_radius=20,
+                        padding=ft.padding.symmetric(horizontal=20, vertical=12),
+                        border=ft.border.all(1, colors["surface_border"]),
                     ),
                 ],
-                spacing=10,
-                alignment=ft.MainAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            padding=ft.padding.symmetric(vertical=10),
+            padding=ft.padding.symmetric(horizontal=5, vertical=8),
         )
 
         # === COLUMNA IZQUIERDA ===
@@ -704,11 +712,11 @@ class VentanaPrincipal:
                                 spacing=8,
                                 alignment=ft.MainAxisAlignment.START,
                             ),
-                            ft.Container(height=10),  # Espaciado reducido
+                            ft.Container(height=6),  # Espaciado ultra reducido
                             
                             # Campos: Radicado y Juzgado (uno debajo del otro)
                             self._crear_campo_radicado(),
-                            ft.Container(height=8),
+                            ft.Container(height=6),
                             self._crear_campo_juzgado(),
                         ],
                         spacing=3,
@@ -716,11 +724,11 @@ class VentanaPrincipal:
                     ),
                     bgcolor=colors["surface_tertiary"],
                     border_radius=10,
-                    padding=ft.padding.all(15),
+                    padding=ft.padding.all(12),  # Padding reducido
                     border=ft.border.all(1, colors["surface_border"]),
                 ),
                 
-                ft.Container(height=15),  # Espaciado entre secciones
+                ft.Container(height=10),  # Espaciado entre secciones reducido
                 
                 # SECCIÓN 2: CONFIGURACIÓN DE LA AUDIENCIA
                 ft.Container(
@@ -740,11 +748,11 @@ class VentanaPrincipal:
                                 spacing=8,
                                 alignment=ft.MainAxisAlignment.START,
                             ),
-                            ft.Container(height=10),
+                            ft.Container(height=6),
                             
                             # Campos: Tipo de audiencia y ¿Se realizó?
                             self._crear_campo_tipo_audiencia(),
-                            ft.Container(height=8),
+                            ft.Container(height=6),
                             self._crear_campo_realizada(),
                         ],
                         spacing=3,
@@ -752,7 +760,7 @@ class VentanaPrincipal:
                     ),
                     bgcolor=colors["surface_tertiary"],
                     border_radius=10,
-                    padding=ft.padding.all(15),
+                    padding=ft.padding.all(12),  # Padding reducido
                     border=ft.border.all(1, colors["surface_border"]),
                 ),
             ],
@@ -782,11 +790,11 @@ class VentanaPrincipal:
                                 spacing=8,
                                 alignment=ft.MainAxisAlignment.START,
                             ),
-                            ft.Container(height=10),
+                            ft.Container(height=6),
                             
                             # Campos: Fecha y Hora (uno debajo del otro)
                             self._crear_campo_fecha(),
-                            ft.Container(height=8),
+                            ft.Container(height=6),
                             self._crear_campo_hora(),
                         ],
                         spacing=3,
@@ -795,10 +803,10 @@ class VentanaPrincipal:
                     bgcolor=colors["surface_tertiary"],
                     border=ft.border.all(1, colors["surface_border"]),
                     border_radius=10,
-                    padding=15,
+                    padding=12,  # Padding reducido
                 ),
                 
-                ft.Container(height=15),
+                ft.Container(height=10),  # Espaciado reducido
                 
                 # SECCIÓN 4: MOTIVOS DE NO REALIZACIÓN
                 ft.Container(
@@ -812,13 +820,13 @@ class VentanaPrincipal:
                                         "MOTIVOS DE NO REALIZACIÓN",
                                         size=14,
                                         weight=ft.FontWeight.BOLD,
-                                        color=colors["error"]
+                                        color=colors["text_primary"]  # Cambiado a texto principal
                                     ),
                                 ],
                                 spacing=8,
                                 alignment=ft.MainAxisAlignment.START,
                             ),
-                            ft.Container(height=10),
+                            ft.Container(height=6),
                             
                             # Campo de motivos (compacto)
                             self._crear_campo_motivos(),
@@ -826,15 +834,15 @@ class VentanaPrincipal:
                         spacing=3,
                         alignment=ft.MainAxisAlignment.START,
                     ),
-                    bgcolor=colors["error_light"],
-                    border_radius=12,
-                    padding=ft.padding.all(18),
-                    border=ft.border.all(1, colors["error"]),
+                    bgcolor=colors["surface_tertiary"],  # Mismo fondo gris que las otras secciones
+                    border_radius=10,
+                    padding=ft.padding.all(12),  # Padding reducido
+                    border=ft.border.all(1, colors["surface_border"]),  # Borde gris como las otras secciones
                     shadow=ft.BoxShadow(
                         spread_radius=0,
-                        blur_radius=8,
-                        color=f"{colors['error']}20",
-                        offset=ft.Offset(0, 2),
+                        blur_radius=6,  # Blur reducido
+                        color="#00000010" if not is_dark_theme() else "#00000030",
+                        offset=ft.Offset(0, 1),  # Offset reducido
                     ),
                 ),
             ],
@@ -847,7 +855,7 @@ class VentanaPrincipal:
         row_principal = ft.Row(
             controls=[
                 columna_izquierda,
-                ft.Container(width=20),  # Espaciado entre columnas
+                ft.Container(width=15),  # Espaciado entre columnas reducido
                 columna_derecha,
             ],
             expand=True,
@@ -875,7 +883,7 @@ class VentanaPrincipal:
                                 ],
                                 spacing=8,
                             ),
-                            ft.Container(height=8),
+                            ft.Container(height=6),  # Espaciado reducido
                             
                             # Campo de observaciones (reducido a 2 líneas)
                             self._crear_campo_observaciones_compacto(),
@@ -885,18 +893,10 @@ class VentanaPrincipal:
                     bgcolor=colors["surface_tertiary"],
                     border=ft.border.all(1, colors["surface_border"]),
                     border_radius=10,
-                    padding=15,
+                    padding=12,  # Padding reducido
                     expand=1,
                 ),
             ],
-        )
-
-        # === BOTONES DE ACCIÓN (ANCHO COMPLETO) ===
-        seccion_botones = ft.Row(
-            controls=[
-                self._crear_botones_accion_compactos(),
-            ],
-            expand=True,
         )
 
         # === CONTENEDOR PRINCIPAL SIN SCROLL ===
@@ -904,17 +904,15 @@ class VentanaPrincipal:
         return ft.Container(
             content=ft.Column(
                 controls=[
-                    titulo_principal,
+                    barra_informacion,
                     ft.Divider(height=1, color=colors["surface_border"]),
-                    ft.Container(height=15),  # Espaciado reducido
+                    ft.Container(height=8),  # Espaciado ultra reducido
                     
                     row_principal,  # Las dos columnas principales
-                    ft.Container(height=15),
+                    ft.Container(height=8),  # Espaciado ultra reducido
                     
                     seccion_observaciones,  # Observaciones ancho completo
-                    ft.Container(height=15),
-                    
-                    seccion_botones,  # Botones ancho completo
+                    ft.Container(height=12),  # Espaciado final reducido
                 ],
                 spacing=0,
                 expand=True,
@@ -922,7 +920,7 @@ class VentanaPrincipal:
             ),
             bgcolor=colors["form_bg"], 
             border_radius=16,
-            padding=ft.padding.all(20),  # Padding reducido
+            padding=ft.padding.all(15),  # Padding principal reducido
             expand=True,
         )
 
@@ -940,12 +938,20 @@ class VentanaPrincipal:
             prefix_icon=ft.Icons.FOLDER_OUTLINED,
             text_style=ft.TextStyle(size=14, color=colors["text_primary"]),
             label_style=ft.TextStyle(size=13, color=colors["text_secondary"]),
-            content_padding=ft.Padding(12, 10, 12, 10),
+            content_padding=ft.Padding(10, 8, 10, 8),  # Padding reducido
         )
         return self.entrada_radicado
 
     def _crear_campo_tipo_audiencia(self):
-        """Campo de tipo de audiencia con diseño mejorado y colores dinámicos."""
+        """Campo de tipo de audiencia con lista expandida y mejor organización.
+        
+        NOTA: Para implementar búsqueda por texto en el futuro, se podría:
+        1. Usar un TextField con onChange que filtre las opciones
+        2. Mostrar un ListView debajo con sugerencias filtradas
+        3. Al seleccionar una sugerencia, actualizar el TextField
+        
+        Por ahora, usamos Dropdown con scroll para manejar las 18 opciones.
+        """
         colors = get_theme_colors()
         
         self.combo_tipo = ft.Dropdown(
@@ -961,6 +967,8 @@ class VentanaPrincipal:
             text_style=ft.TextStyle(size=14, color=colors["text_primary"]),
             label_style=ft.TextStyle(size=13, color=colors["text_secondary"]),
             content_padding=ft.Padding(12, 10, 12, 10),
+            # Permitir scroll en el dropdown para acomodar más opciones
+            max_menu_height=300,
         )
 
         self.entrada_tipo_otra = ft.TextField(
@@ -986,20 +994,13 @@ class VentanaPrincipal:
         )
 
     def _crear_campo_fecha(self):
-        """Campo de fecha con DatePicker unificado y formateo en tiempo real."""
+        """Campo de fecha simplificado sin DatePicker con formateo en tiempo real."""
         colors = get_theme_colors()
-        
-        # DatePicker principal
-        self.date_picker = ft.DatePicker(
-            first_date=datetime(datetime.now().year - 1, 1, 1),
-            last_date=datetime(datetime.now().year + 5, 12, 31),
-            on_change=self._on_date_picker_change,
-        )
         
         # Campo de texto con formateo automático en tiempo real
         self.entrada_fecha = ft.TextField(
             label="Fecha (DD/MM/AAAA)",
-            hint_text="Ej: 22072025 → 22/07/2025",
+            hint_text="Ej: 31/07/2025",
             width=200,
             max_length=10,  # DD/MM/AAAA = 10 caracteres
             border_radius=10,
@@ -1012,34 +1013,6 @@ class VentanaPrincipal:
             content_padding=ft.Padding(12, 10, 12, 10),
             on_change=self._on_fecha_change_tiempo_real,
         )
-        
-        # Botón del calendario alineado junto al campo
-        btn_calendario = ft.IconButton(
-            icon=ft.Icons.CALENDAR_TODAY_OUTLINED,
-            tooltip="Abrir calendario",
-            on_click=self._abrir_date_picker,
-            icon_color=colors["primary"],
-            icon_size=20,
-            style=ft.ButtonStyle(
-                bgcolor=colors["surface_tertiary"],
-                shape=ft.RoundedRectangleBorder(radius=8),
-                padding=ft.Padding(8, 8, 8, 8),
-            ),
-        )
-        
-        # Row para alinear campo y botón lado a lado
-        campo_fecha_row = ft.Row(
-            controls=[
-                self.entrada_fecha,
-                btn_calendario,
-            ],
-            spacing=8,
-            alignment=ft.MainAxisAlignment.START,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-        )
-        
-        # Agregar el DatePicker a la página
-        self.page.overlay.append(self.date_picker)
         
         # Campos virtuales para compatibilidad con lógica existente
         self.combo_dia = ft.Dropdown(
@@ -1058,7 +1031,7 @@ class VentanaPrincipal:
             value=None,
         )
 
-        return campo_fecha_row
+        return self.entrada_fecha
 
     def _crear_campo_hora(self):
         """Campo de hora con selección automática de texto al hacer clic y colores dinámicos."""
@@ -1135,7 +1108,7 @@ class VentanaPrincipal:
             prefix_icon=ft.Icons.ACCOUNT_BALANCE_OUTLINED,
             text_style=ft.TextStyle(size=14, color=colors["text_primary"]),
             label_style=ft.TextStyle(size=13, color=colors["text_secondary"]),
-            content_padding=ft.Padding(12, 10, 12, 10),
+            content_padding=ft.Padding(10, 8, 10, 8),  # Padding reducido
         )
         return self.entrada_juzgado
 
@@ -1145,7 +1118,11 @@ class VentanaPrincipal:
         self.combo_realizada = ft.Dropdown(
             label="¿Se realizó?",
             hint_text="Seleccione SI o NO",
-            options=[ft.dropdown.Option("SI"), ft.dropdown.Option("NO")],
+            options=[
+                ft.dropdown.Option("-- Seleccione --"),
+                ft.dropdown.Option("SI"), 
+                ft.dropdown.Option("NO")
+            ],
             on_change=self._on_realizada_change,
             border_radius=10,
             filled=True,
@@ -1206,14 +1183,15 @@ class VentanaPrincipal:
                 spacing=8,
                 alignment=ft.MainAxisAlignment.START,
             ),
-            bgcolor=colors["error_light"],
+            bgcolor=colors["surface_primary"],  # Fondo gris claro como otros campos
             border_radius=10,
-            padding=ft.Padding(15, 12, 15, 12),
-            border=ft.border.all(1, colors["error"]),
+            padding=ft.Padding(12, 8, 12, 8),  # Padding ultra reducido
+            border=ft.border.all(1, colors["surface_border"]),  # Borde gris normal
         )
 
     def _crear_campo_observaciones(self):
-        """Campo de observaciones con diseño mejorado y colores claros."""
+        """Campo de observaciones con diseño mejorado y colores dinámicos."""
+        colors = get_theme_colors()
         self.entrada_observaciones = ft.TextField(
             label="Observaciones",
             hint_text="Detalles adicionales de la audiencia...",
@@ -1222,11 +1200,11 @@ class VentanaPrincipal:
             max_lines=5,
             border_radius=10,
             filled=True,
-            bgcolor="#FFFFFF",  # Fondo blanco completamente claro
-            border_color="#E5E7EB",
-            focused_border_color="#1E40AF",
-            text_style=ft.TextStyle(size=13, color="#1F2937"),
-            label_style=ft.TextStyle(size=12, color="#6B7280"),
+            bgcolor=colors["surface_primary"],
+            border_color=colors["surface_border"],
+            focused_border_color=colors["primary"],
+            text_style=ft.TextStyle(size=13, color=colors["text_primary"]),
+            label_style=ft.TextStyle(size=12, color=colors["text_secondary"]),
             content_padding=ft.Padding(12, 10, 12, 10),
         )
         return self.entrada_observaciones
@@ -1238,8 +1216,8 @@ class VentanaPrincipal:
             label="Observaciones",
             hint_text="Detalles adicionales de la audiencia...",
             multiline=True,
-            min_lines=2,
-            max_lines=3,  # Reducido para que quepa en pantalla
+            min_lines=1,  # Ultra reducido para maximizar espacio
+            max_lines=2,  # Solo 2 líneas máximo
             border_radius=10,
             filled=True,
             bgcolor=colors["surface_primary"],
@@ -1247,18 +1225,20 @@ class VentanaPrincipal:
             focused_border_color=colors["primary"],
             text_style=ft.TextStyle(size=13, color=colors["text_primary"]),
             label_style=ft.TextStyle(size=12, color=colors["text_secondary"]),
-            content_padding=ft.Padding(12, 8, 12, 8),  # Padding reducido
+            content_padding=ft.Padding(10, 6, 10, 6),  # Padding ultra reducido
         )
         return self.entrada_observaciones
 
     def _crear_botones_accion(self):
-        """Crea los botones de acción con diseño profesional."""
+        """Crea los botones de acción con diseño profesional y colores dinámicos."""
+        colors = get_theme_colors()
+        
         self.btn_guardar = ft.ElevatedButton(
             text="💾 GUARDAR AUDIENCIA",
             on_click=self._on_guardar,
             style=ft.ButtonStyle(
-                bgcolor="#1E40AF",
-                color="#FFFFFF",
+                bgcolor=colors["primary"],
+                color=colors["text_on_primary"],
                 elevation=3,
                 shape=ft.RoundedRectangleBorder(radius=12),
                 padding=ft.Padding(20, 15, 20, 15),
@@ -1271,8 +1251,8 @@ class VentanaPrincipal:
             text="✏️ ACTUALIZAR REGISTRO",
             on_click=self._on_actualizar,
             style=ft.ButtonStyle(
-                bgcolor="#059669",
-                color="#FFFFFF",
+                bgcolor=colors["success"],
+                color=colors["text_on_primary"],
                 elevation=3,
                 shape=ft.RoundedRectangleBorder(radius=12),
                 padding=ft.Padding(20, 15, 20, 15),
@@ -1286,8 +1266,8 @@ class VentanaPrincipal:
             text="❌ CANCELAR EDICIÓN",
             on_click=self._on_cancelar_edicion,
             style=ft.ButtonStyle(
-                bgcolor="#DC2626",
-                color="#FFFFFF",
+                bgcolor=colors["danger"],
+                color=colors["text_on_primary"],
                 elevation=3,
                 shape=ft.RoundedRectangleBorder(radius=12),
                 padding=ft.Padding(20, 15, 20, 15),
@@ -1307,12 +1287,12 @@ class VentanaPrincipal:
                 spacing=15,
             ),
             padding=ft.Padding(20, 15, 20, 20),
-            bgcolor="#FFFFFF",
+            bgcolor=colors["surface_card"],
             border_radius=16,
             shadow=ft.BoxShadow(
                 spread_radius=0,
                 blur_radius=8,
-                color="#0000001A",
+                color="#00000015" if not is_dark_theme() else "#00000030",
                 offset=ft.Offset(0, 2),
             ),
         )
@@ -1371,6 +1351,133 @@ class VentanaPrincipal:
             ),
             expand=1,
         )
+
+    def _crear_barra_acciones_sticky(self):
+        """Crea la barra de acciones sticky que siempre permanece visible."""
+        colors = get_theme_colors()
+        
+        # Botones para modo normal
+        btn_guardar_sticky = ft.ElevatedButton(
+            text="💾 Guardar",
+            on_click=self._on_guardar,
+            style=get_action_button_primary(),
+            tooltip="Guardar nueva audiencia",
+        )
+        
+        btn_nuevo_archivo = ft.ElevatedButton(
+            text="📄 Nuevo",
+            on_click=self._on_crear_archivo,
+            style=get_action_button_secondary(),
+            tooltip="Crear nuevo archivo",
+        )
+        
+        btn_abrir_archivo = ft.ElevatedButton(
+            text="📂 Abrir",
+            on_click=self._on_seleccionar_archivo,
+            style=get_action_button_secondary(),
+            tooltip="Abrir archivo existente",
+        )
+        
+        btn_editar_registro = ft.ElevatedButton(
+            text="✏️ Editar",
+            on_click=self._on_editar_registro,
+            style=get_action_button_secondary(),
+            tooltip="Editar registro existente",
+        )
+        
+        # Botones para modo edición
+        btn_actualizar_sticky = ft.ElevatedButton(
+            text="✅ Actualizar",
+            on_click=self._on_actualizar,
+            style=get_action_button_success(),
+            tooltip="Guardar cambios del registro",
+            visible=False,
+        )
+        
+        btn_cancelar_sticky = ft.ElevatedButton(
+            text="❌ Cancelar",
+            on_click=self._on_cancelar_edicion,
+            style=get_action_button_danger(),
+            tooltip="Cancelar edición",
+            visible=False,
+        )
+        
+        # Separador visual
+        separador = ft.Container(
+            width=1,
+            height=25,
+            bgcolor=colors["surface_border"],
+            margin=ft.margin.symmetric(horizontal=8),
+        )
+        
+        # Botones de gestión de archivos (siempre visibles)
+        btn_eliminar = ft.ElevatedButton(
+            text="🗑️ Eliminar",
+            on_click=self._on_eliminar_archivo,
+            style=get_action_button_danger(),
+            tooltip="Eliminar archivo",
+        )
+        
+        btn_descargar = ft.ElevatedButton(
+            text="⬇️ Descargar",
+            on_click=self._on_descargar_archivo,
+            style=get_action_button_secondary(),
+            tooltip="Descargar archivo",
+        )
+        
+        # Guardar referencias para poder cambiar visibilidad
+        self.btn_guardar_sticky = btn_guardar_sticky
+        self.btn_actualizar_sticky = btn_actualizar_sticky
+        self.btn_cancelar_sticky = btn_cancelar_sticky
+        self.btn_nuevo_archivo = btn_nuevo_archivo
+        self.btn_abrir_archivo = btn_abrir_archivo
+        self.btn_editar_registro = btn_editar_registro
+        
+        # Contenedor principal de la barra
+        barra_acciones = ft.Container(
+            content=ft.Row(
+                controls=[
+                    # Grupo principal: Acciones de audiencia
+                    ft.Row(
+                        controls=[
+                            btn_guardar_sticky,
+                            btn_actualizar_sticky,
+                            btn_cancelar_sticky,
+                        ],
+                        spacing=8,
+                    ),
+                    
+                    separador,
+                    
+                    # Grupo secundario: Gestión de archivos
+                    ft.Row(
+                        controls=[
+                            btn_nuevo_archivo,
+                            btn_abrir_archivo,
+                            btn_editar_registro,
+                        ],
+                        spacing=8,
+                    ),
+                    
+                    # Espaciador para empujar los botones de peligro hacia la derecha
+                    ft.Container(expand=True),
+                    
+                    # Grupo de peligro: Acciones destructivas
+                    ft.Row(
+                        controls=[
+                            btn_eliminar,
+                            btn_descargar,
+                        ],
+                        spacing=8,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.START,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            **get_action_bar_style(),
+        )
+        
+        return barra_acciones
 
     def _crear_gestion_archivos(self):
         """Crea la sección de gestión de archivos con diseño profesional y colores dinámicos."""
@@ -1483,20 +1590,6 @@ class VentanaPrincipal:
 
     # === EVENTOS ===
 
-    def _abrir_date_picker(self, e):
-        """Abre el DatePicker para seleccionar fecha."""
-        self.date_picker.open = True
-        self.page.update()
-
-    def _on_date_picker_change(self, e):
-        """Maneja el cambio de fecha en el DatePicker."""
-        if e.control.value:
-            fecha_seleccionada = e.control.value
-            fecha_formateada = fecha_seleccionada.strftime("%d/%m/%Y")
-            self.entrada_fecha.value = fecha_formateada
-            self._actualizar_campos_compatibilidad(fecha_seleccionada)
-            self.page.update()
-
     def _on_fecha_change_tiempo_real(self, e):
         """Maneja el formateo en tiempo real de la fecha mientras se escribe."""
         valor = e.control.value
@@ -1540,8 +1633,6 @@ class VentanaPrincipal:
                 try:
                     fecha_obj = datetime.strptime(fecha_formateada, "%d/%m/%Y")
                     self._actualizar_campos_compatibilidad(fecha_obj)
-                    # Sincronizar con DatePicker
-                    self.date_picker.value = fecha_obj.date()
                 except ValueError:
                     # Fecha inválida, limpiar campos de compatibilidad
                     self._limpiar_campos_compatibilidad()
@@ -1565,6 +1656,19 @@ class VentanaPrincipal:
     def _on_tipo_change(self, e):
         """Maneja el cambio en el tipo de audiencia."""
         self.entrada_tipo_otra.visible = e.control.value == "Otra"
+        
+        # Limpiar error visual si se selecciona una opción válida
+        if e.control.value != "-- Seleccione tipo --":
+            e.control.border_color = get_theme_colors()["surface_border"]
+        
+        self.page.update()
+
+    def _on_realizada_change(self, e):
+        """Maneja el cambio en el dropdown de Se realizó."""
+        # Limpiar error visual si se selecciona una opción válida
+        if e.control.value != "-- Seleccione --":
+            e.control.border_color = get_theme_colors()["surface_border"]
+        
         self.page.update()
 
     def _on_realizada_change(self, e):
@@ -1615,33 +1719,44 @@ class VentanaPrincipal:
         self.limpiar_campos()
         self.actualizar_contador_registros()
 
-        # Establecer fecha actual en el nuevo campo
-        hoy = datetime.now()
-        fecha_actual = f"{hoy.day:02d}/{hoy.month:02d}/{hoy.year}"
-        if hasattr(self, 'entrada_fecha') and self.entrada_fecha:
-            self.entrada_fecha.value = fecha_actual
-            self._actualizar_campos_compatibilidad(hoy)
-
+        # NO establecer fecha por defecto - mantener campo vacío
+        
         # Establecer hora por defecto
         if self.entrada_hora:
             self.entrada_hora.value = "00"
         if self.entrada_minuto:
             self.entrada_minuto.value = "00"
 
+        # Forzar actualización específica de los dropdowns
+        if hasattr(self, 'combo_tipo') and self.combo_tipo:
+            self.combo_tipo.value = "-- Seleccione tipo --"
+            self.combo_tipo.update()
+        
+        if hasattr(self, 'combo_realizada') and self.combo_realizada:
+            self.combo_realizada.value = "-- Seleccione --"
+            self.combo_realizada.update()
+
         self.page.update()
 
     def limpiar_campos(self):
-        """Limpia todos los campos."""
+        """Limpia todos los campos y asegura actualización visual."""
         if self.entrada_radicado:
             self.entrada_radicado.value = ""
+        
+        # Limpiar y actualizar dropdown de tipo con actualización específica
         if self.combo_tipo:
-            self.combo_tipo.value = None
+            self.combo_tipo.value = "-- Seleccione tipo --"
+            self.combo_tipo.update()
+        
         if self.entrada_tipo_otra:
             self.entrada_tipo_otra.value = ""
             self.entrada_tipo_otra.visible = False
+            self.entrada_tipo_otra.update()
+        
         # Limpiar nuevo campo de fecha
         if hasattr(self, 'entrada_fecha') and self.entrada_fecha:
             self.entrada_fecha.value = ""
+        
         # Limpiar campos de compatibilidad
         if hasattr(self, 'combo_dia'):
             self.combo_dia.value = None
@@ -1649,24 +1764,39 @@ class VentanaPrincipal:
             self.combo_mes.value = None
         if hasattr(self, 'combo_anio'):
             self.combo_anio.value = None
+        
         if self.entrada_hora:
             self.entrada_hora.value = ""
         if self.entrada_minuto:
             self.entrada_minuto.value = ""
         if self.entrada_juzgado:
             self.entrada_juzgado.value = ""
+        
+        # Limpiar y actualizar dropdown de realizada con actualización específica
         if self.combo_realizada:
-            self.combo_realizada.value = None
+            self.combo_realizada.value = "-- Seleccione --"
+            self.combo_realizada.update()
+        
+        # Limpiar checkboxes y deshabilitar
         for checkbox in self.checkboxes_motivos:
             checkbox.value = False
             checkbox.disabled = True
+            checkbox.update()
+        
         if self.entrada_observaciones:
             self.entrada_observaciones.value = ""
+        
+        # Actualización final de toda la página
+        self.page.update()
 
     def obtener_datos_formulario(self):
         """Obtiene los datos del formulario."""
         tipo_audiencia = self.combo_tipo.value
-        if tipo_audiencia == "Otra":
+        
+        # Validar que no sea la opción placeholder
+        if tipo_audiencia == "-- Seleccione tipo --":
+            tipo_audiencia = ""
+        elif tipo_audiencia == "Otra":
             tipo_audiencia = self.entrada_tipo_otra.value or ""
 
         # Usar el nuevo campo de fecha
@@ -1681,14 +1811,19 @@ class VentanaPrincipal:
             for checkbox in self.checkboxes_motivos
         ]
 
+        # Obtener valor de realizada, validando placeholder
+        realizada_value = self.combo_realizada.value
+        if realizada_value == "-- Seleccione --":
+            realizada_value = ""
+
         return {
             "radicado": self.entrada_radicado.value or "",
             "tipo": tipo_audiencia or "",
             "fecha": fecha,
             "hora": hora,
             "juzgado": self.entrada_juzgado.value or "",
-            "realizada_si": "SI" if self.combo_realizada.value == "SI" else "",
-            "realizada_no": "NO" if self.combo_realizada.value == "NO" else "",
+            "realizada_si": "SI" if realizada_value == "SI" else "",
+            "realizada_no": "NO" if realizada_value == "NO" else "",
             "motivos": motivos,
             "observaciones": self.entrada_observaciones.value or "",
         }
@@ -1710,11 +1845,20 @@ class VentanaPrincipal:
         
         valido, mensaje = validar_todos_los_datos(datos)
         print(f"Validación: válido={valido}, mensaje='{mensaje}'")
-
+        
         if not valido:
+            # Mostrar validación visual en dropdowns si están en estado inválido
+            if datos["tipo"] == "":
+                self.combo_tipo.border_color = "#EF4444"  # Rojo
+                self.combo_tipo.update()
+            
+            if datos["realizada_si"] == "" and datos["realizada_no"] == "":
+                self.combo_realizada.border_color = "#EF4444"  # Rojo
+                self.combo_realizada.update()
+            
             self._mostrar_mensaje(f"Error: {mensaje}")
             return
-
+        
         try:
             print("Creando objeto Audiencia...")
             audiencia = Audiencia.from_form_data(datos)
@@ -1728,8 +1872,7 @@ class VentanaPrincipal:
             print("Reordenamiento exitoso.")
 
             self._mostrar_mensaje("Registro guardado correctamente")
-            self.limpiar_campos()
-            self._inicializar()
+            self._inicializar()  # Esto ya incluye limpiar_campos() y establecer valores por defecto
             self.actualizar_contador_registros()
             print("=== DEBUG: guardar_datos completado exitosamente ===")
 
@@ -1771,22 +1914,66 @@ class VentanaPrincipal:
         self.desactivar_modo_edicion()
 
     def activar_modo_edicion(self):
-        """Activa el modo edición."""
+        """Activa el modo edición con la barra sticky."""
         self.modo_edicion = True
-        self.btn_guardar.visible = False
-        self.btn_actualizar.visible = True
-        self.btn_cancelar_edicion.visible = True
-        self.page.title = "Gestor de Audiencias - EDITANDO"
+        
+        # Ocultar botones de modo normal
+        if hasattr(self, 'btn_guardar_sticky'):
+            self.btn_guardar_sticky.visible = False
+        if hasattr(self, 'btn_nuevo_archivo'):
+            self.btn_nuevo_archivo.visible = False
+        if hasattr(self, 'btn_abrir_archivo'):
+            self.btn_abrir_archivo.visible = False
+        if hasattr(self, 'btn_editar_registro'):
+            self.btn_editar_registro.visible = False
+            
+        # Mostrar botones de modo edición
+        if hasattr(self, 'btn_actualizar_sticky'):
+            self.btn_actualizar_sticky.visible = True
+        if hasattr(self, 'btn_cancelar_sticky'):
+            self.btn_cancelar_sticky.visible = True
+            
+        # Mantener compatibilidad con botones antiguos si existen
+        if hasattr(self, 'btn_guardar') and self.btn_guardar:
+            self.btn_guardar.visible = False
+        if hasattr(self, 'btn_actualizar') and self.btn_actualizar:
+            self.btn_actualizar.visible = True
+        if hasattr(self, 'btn_cancelar_edicion') and self.btn_cancelar_edicion:
+            self.btn_cancelar_edicion.visible = True
+            
+        self.page.title = "🏛️ Gestor de Audiencias - EDITANDO"
         self.page.update()
 
     def desactivar_modo_edicion(self):
-        """Desactiva el modo edición."""
+        """Desactiva el modo edición con la barra sticky."""
         self.modo_edicion = False
         self.fila_editando = None
-        self.btn_guardar.visible = True
-        self.btn_actualizar.visible = False
-        self.btn_cancelar_edicion.visible = False
-        self.page.title = "Gestor de Audiencias Judiciales"
+        
+        # Mostrar botones de modo normal
+        if hasattr(self, 'btn_guardar_sticky'):
+            self.btn_guardar_sticky.visible = True
+        if hasattr(self, 'btn_nuevo_archivo'):
+            self.btn_nuevo_archivo.visible = True
+        if hasattr(self, 'btn_abrir_archivo'):
+            self.btn_abrir_archivo.visible = True
+        if hasattr(self, 'btn_editar_registro'):
+            self.btn_editar_registro.visible = True
+            
+        # Ocultar botones de modo edición
+        if hasattr(self, 'btn_actualizar_sticky'):
+            self.btn_actualizar_sticky.visible = False
+        if hasattr(self, 'btn_cancelar_sticky'):
+            self.btn_cancelar_sticky.visible = False
+            
+        # Mantener compatibilidad con botones antiguos si existen
+        if hasattr(self, 'btn_guardar') and self.btn_guardar:
+            self.btn_guardar.visible = True
+        if hasattr(self, 'btn_actualizar') and self.btn_actualizar:
+            self.btn_actualizar.visible = False
+        if hasattr(self, 'btn_cancelar_edicion') and self.btn_cancelar_edicion:
+            self.btn_cancelar_edicion.visible = False
+            
+        self.page.title = "🏛️ Gestor de Audiencias Judiciales"
         self.limpiar_campos()
         self._inicializar()
 
@@ -2002,24 +2189,43 @@ class VentanaPrincipal:
         self.page.update()
 
     def _mostrar_mensaje(self, mensaje: str):
-        """Muestra un mensaje usando AlertDialog."""
+        """Muestra un mensaje usando AlertDialog con colores dinámicos."""
         print(f"=== DEBUG: Mostrando mensaje: '{mensaje}' ===")
+        colors = get_theme_colors()
         
         def cerrar_mensaje(e):
             dlg.open = False
             self.page.update()
         
+        # Determinar si es un mensaje de error para usar colores apropiados
+        es_error = any(palabra in mensaje.lower() for palabra in ["error", "no se pudo", "falta", "obligatorio", "inválido"])
+        es_exito = any(palabra in mensaje.lower() for palabra in ["correctamente", "guardado", "creado", "actualizado", "éxito"])
+        
+        # Elegir colores según el tipo de mensaje
+        if es_error:
+            titulo_color = colors["error"]
+            mensaje_color = colors["text_primary"]  # Usar color principal para mejor contraste
+            boton_color = colors["error"]
+        elif es_exito:
+            titulo_color = colors["success"]
+            mensaje_color = colors["text_primary"]
+            boton_color = colors["success"]
+        else:
+            titulo_color = colors["primary"]
+            mensaje_color = colors["text_primary"]
+            boton_color = colors["primary"]
+        
         dlg = ft.AlertDialog(
             modal=True,
-            title=ft.Text("Información", size=18, weight=ft.FontWeight.BOLD),
-            content=ft.Text(mensaje, size=14, color="#374151"),
+            title=ft.Text("Información", size=18, weight=ft.FontWeight.BOLD, color=titulo_color),
+            content=ft.Text(mensaje, size=14, color=mensaje_color),
             actions=[
                 ft.ElevatedButton(
                     "OK",
                     on_click=cerrar_mensaje,
                     style=ft.ButtonStyle(
-                        bgcolor="#1E40AF",
-                        color="#FFFFFF",
+                        bgcolor=boton_color,
+                        color=colors["text_on_primary"],
                         elevation=2,
                         shape=ft.RoundedRectangleBorder(radius=8),
                         padding=ft.Padding(20, 10, 20, 10),
@@ -2027,6 +2233,7 @@ class VentanaPrincipal:
                 ),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
+            bgcolor=colors["surface_card"],
         )
         
         self.page.overlay.append(dlg)
