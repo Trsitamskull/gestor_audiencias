@@ -483,6 +483,8 @@ class VentanaPrincipal:
                 self.page.window.height = 900
                 self.page.window.min_width = 1000
                 self.page.window.min_height = 700
+                # Abrir automáticamente en pantalla completa
+                self.page.window.maximized = True
         except:
             pass
 
