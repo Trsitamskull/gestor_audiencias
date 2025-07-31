@@ -470,7 +470,7 @@ class VentanaPrincipal:
         """Configura las propiedades de la página."""
         self.page.title = "🏛️ Gestor de Audiencias Judiciales"
         self.page.padding = 0  # Sin padding para usar toda la pantalla
-        self.page.scroll = ft.ScrollMode.AUTO
+        self.page.scroll = ft.ScrollMode.HIDDEN  # Desactivar auto-scroll de la página
         
         # Aplicar colores del tema actual
         colors = get_theme_colors()
@@ -500,8 +500,8 @@ class VentanaPrincipal:
         # Configurar atajos de teclado
         self.page.on_keyboard_event = self._on_keyboard_event
         
-        # Asegurar que la página pueda recibir eventos de teclado
-        self.page.auto_scroll = True
+        # Desactivar auto-scroll para evitar movimientos no deseados
+        self.page.auto_scroll = False
 
     def _toggle_theme(self, e):
         """Alternar entre tema claro y oscuro"""
@@ -550,7 +550,7 @@ class VentanaPrincipal:
                 ],
                 expand=True,
                 spacing=0,
-                scroll=ft.ScrollMode.AUTO,  # Permitir scroll del contenido principal
+                scroll=ft.ScrollMode.HIDDEN,  # Sin auto-scroll, solo scroll manual cuando sea necesario
             ),
             padding=ft.padding.all(25),  # Padding reducido
             bgcolor=colors["surface_secondary"],
