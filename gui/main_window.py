@@ -13,6 +13,17 @@ from gestor_archivos import (
     eliminar_archivo,
     descargar_archivo,
 )
+from gui.constants import (
+    get_theme_colors, 
+    toggle_theme, 
+    is_dark_theme,
+    _update_legacy_constants,
+    get_button_style_primary,
+    get_button_style_secondary,
+    get_button_style_danger,
+    get_field_style,
+    get_container_style,
+)
 
 
 class DialogoCrearArchivo:
@@ -25,7 +36,9 @@ class DialogoCrearArchivo:
         self._crear_dialogo()
     
     def _crear_dialogo(self):
-        """Crea el diálogo para crear archivo."""
+        """Crea el diálogo para crear archivo con colores dinámicos."""
+        colors = get_theme_colors()
+        
         # Campo de entrada para el nombre
         self.campo_nombre = ft.TextField(
             label="Nombre del archivo",
@@ -33,11 +46,11 @@ class DialogoCrearArchivo:
             width=300,
             border_radius=10,
             filled=True,
-            bgcolor="#FFFFFF",
-            border_color="#E5E7EB",
-            focused_border_color="#1E40AF",
-            text_style=ft.TextStyle(size=14, color="#1F2937"),
-            label_style=ft.TextStyle(size=13, color="#6B7280"),
+            bgcolor=colors["surface_primary"],
+            border_color=colors["surface_border"],
+            focused_border_color=colors["primary"],
+            text_style=ft.TextStyle(size=14, color=colors["text_primary"]),
+            label_style=ft.TextStyle(size=13, color=colors["text_secondary"]),
             content_padding=ft.Padding(12, 10, 12, 10),
             autofocus=True,
         )
@@ -47,8 +60,8 @@ class DialogoCrearArchivo:
             text="Crear",
             on_click=self._on_crear,
             style=ft.ButtonStyle(
-                bgcolor="#1E40AF",
-                color="#FFFFFF",
+                bgcolor=colors["primary"],
+                color=colors["text_on_primary"],
                 elevation=2,
                 shape=ft.RoundedRectangleBorder(radius=8),
                 padding=ft.Padding(20, 10, 20, 10),
@@ -59,7 +72,7 @@ class DialogoCrearArchivo:
             text="Cancelar",
             on_click=self._on_cancelar,
             style=ft.ButtonStyle(
-                color="#6B7280",
+                color=colors["text_secondary"],
                 padding=ft.Padding(20, 10, 20, 10),
             ),
         )
@@ -67,14 +80,14 @@ class DialogoCrearArchivo:
         # Contenido del diálogo
         self.dialog = ft.AlertDialog(
             modal=True,
-            title=ft.Text("Crear Nuevo Archivo", size=18, weight=ft.FontWeight.BOLD),
+            title=ft.Text("Crear Nuevo Archivo", size=18, weight=ft.FontWeight.BOLD, color=colors["text_primary"]),
             content=ft.Container(
                 content=ft.Column(
                     controls=[
                         ft.Text(
                             "Ingrese el nombre para el nuevo archivo:",
                             size=14,
-                            color="#6B7280",
+                            color=colors["text_secondary"],
                         ),
                         ft.Container(height=10),
                         self.campo_nombre,
@@ -90,6 +103,7 @@ class DialogoCrearArchivo:
                 btn_crear,
             ],
             actions_alignment=ft.MainAxisAlignment.END,
+            bgcolor=colors["surface_card"],
         )
         
         # Mostrar el diálogo
@@ -130,7 +144,9 @@ class VentanaSeleccionArchivo:
         self._crear_dialogo()
     
     def _crear_dialogo(self):
-        """Crea el diálogo de selección."""
+        """Crea el diálogo de selección con colores dinámicos."""
+        colors = get_theme_colors()
+        
         # Lista de archivos como botones
         lista_controles = []
         
@@ -138,15 +154,15 @@ class VentanaSeleccionArchivo:
             btn_archivo = ft.Container(
                 content=ft.Row(
                     controls=[
-                        ft.Icon(ft.Icons.DESCRIPTION, size=20, color="#1E40AF"),
-                        ft.Text(archivo, size=14, color="#1F2937", expand=True),
-                        ft.Icon(ft.Icons.ARROW_FORWARD_IOS, size=16, color="#9CA3AF"),
+                        ft.Icon(ft.Icons.DESCRIPTION, size=20, color=colors["primary"]),
+                        ft.Text(archivo, size=14, color=colors["text_primary"], expand=True),
+                        ft.Icon(ft.Icons.ARROW_FORWARD_IOS, size=16, color=colors["text_muted"]),
                     ],
                     spacing=10,
                     alignment=ft.MainAxisAlignment.START,
                 ),
-                bgcolor="#F9FAFB",
-                border=ft.border.all(1, "#E5E7EB"),
+                bgcolor=colors["surface_tertiary"],
+                border=ft.border.all(1, colors["surface_border"]),
                 border_radius=8,
                 padding=ft.Padding(15, 12, 15, 12),
                 on_click=lambda e, arch=archivo: self._on_seleccionar(arch),
@@ -159,7 +175,7 @@ class VentanaSeleccionArchivo:
             text="Cancelar",
             on_click=self._on_cancelar,
             style=ft.ButtonStyle(
-                color="#6B7280",
+                color=colors["text_secondary"],
                 padding=ft.Padding(20, 10, 20, 10),
             ),
         )
@@ -181,14 +197,14 @@ class VentanaSeleccionArchivo:
         # Diálogo principal
         self.dialog = ft.AlertDialog(
             modal=True,
-            title=ft.Text(self.titulo, size=18, weight=ft.FontWeight.BOLD),
+            title=ft.Text(self.titulo, size=18, weight=ft.FontWeight.BOLD, color=colors["text_primary"]),
             content=ft.Container(
                 content=ft.Column(
                     controls=[
                         ft.Text(
                             f"Seleccione uno de los {len(self.archivos)} archivos disponibles:",
                             size=14,
-                            color="#6B7280",
+                            color=colors["text_secondary"],
                         ),
                         ft.Container(height=15),
                         contenedor_lista,
@@ -200,6 +216,7 @@ class VentanaSeleccionArchivo:
             ),
             actions=[btn_cancelar],
             actions_alignment=ft.MainAxisAlignment.END,
+            bgcolor=colors["surface_card"],
         )
         
         # Mostrar el diálogo
@@ -336,7 +353,8 @@ class DialogoConfirmacion:
     
     @staticmethod
     def confirmar(page: ft.Page, titulo: str, mensaje: str, callback_si):
-        """Muestra un diálogo de confirmación."""
+        """Muestra un diálogo de confirmación con colores dinámicos."""
+        colors = get_theme_colors()
         
         def confirmar_accion(e):
             dlg.open = False
@@ -349,14 +367,14 @@ class DialogoConfirmacion:
         
         dlg = ft.AlertDialog(
             modal=True,
-            title=ft.Text(titulo, size=18, weight=ft.FontWeight.BOLD),
-            content=ft.Text(mensaje, size=14, color="#374151"),
+            title=ft.Text(titulo, size=18, weight=ft.FontWeight.BOLD, color=colors["text_primary"]),
+            content=ft.Text(mensaje, size=14, color=colors["text_secondary"]),
             actions=[
                 ft.TextButton(
                     "Cancelar",
                     on_click=cancelar_accion,
                     style=ft.ButtonStyle(
-                        color="#6B7280",
+                        color=colors["text_secondary"],
                         padding=ft.Padding(20, 10, 20, 10),
                     ),
                 ),
@@ -364,8 +382,8 @@ class DialogoConfirmacion:
                     "Confirmar",
                     on_click=confirmar_accion,
                     style=ft.ButtonStyle(
-                        bgcolor="#DC2626",
-                        color="#FFFFFF",
+                        bgcolor=colors["danger"],
+                        color=colors["surface_primary"],
                         elevation=2,
                         shape=ft.RoundedRectangleBorder(radius=8),
                         padding=ft.Padding(20, 10, 20, 10),
@@ -373,6 +391,7 @@ class DialogoConfirmacion:
                 ),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
+            bgcolor=colors["surface_card"],
         )
         
         page.overlay.append(dlg)
@@ -430,7 +449,10 @@ class VentanaPrincipal:
         self.page.title = "🏛️ Gestor de Audiencias Judiciales"
         self.page.padding = 0  # Sin padding para usar toda la pantalla
         self.page.scroll = ft.ScrollMode.AUTO
-        self.page.bgcolor = "#F8FAFC"  # Gris muy claro como fondo
+        
+        # Aplicar colores del tema actual
+        colors = get_theme_colors()
+        self.page.bgcolor = colors["surface_secondary"]
         
         # Configurar ventana
         try:
@@ -442,21 +464,51 @@ class VentanaPrincipal:
         except:
             pass
 
-        # Forzar modo claro y tema personalizado con colores profesionales
-        self.page.theme_mode = ft.ThemeMode.LIGHT
+        # Configurar tema basado en el tema actual
+        self.page.theme_mode = ft.ThemeMode.DARK if is_dark_theme() else ft.ThemeMode.LIGHT
         self.page.theme = ft.Theme(
             color_scheme=ft.ColorScheme(
-                primary="#1E40AF",  # Azul profesional
-                on_primary="#FFFFFF",
-                surface="#FFFFFF",
-                on_surface="#1F2937",  # Gris oscuro para texto
+                primary=colors["primary"],
+                on_primary=colors["text_on_primary"],
+                surface=colors["surface_primary"],
+                on_surface=colors["text_primary"],
             )
         )
+
+    def _toggle_theme(self, e):
+        """Alternar entre tema claro y oscuro"""
+        # Cambiar el tema
+        new_theme = toggle_theme()
+        
+        # Actualizar constantes legacy
+        _update_legacy_constants()
+        
+        # Reconfigurar la página
+        self._configurar_pagina()
+        
+        # Recrear la interfaz con los nuevos colores
+        self.page.clean()
+        self._crear_interfaz()
+        
+        # Reinicializar
+        self._inicializar()
+        
+        # Mostrar mensaje de confirmación
+        tema_nombre = "Tema Oscuro" if new_theme == "dark" else "Tema Claro"
+        # Usamos un snack bar simple en lugar del método que aún no definimos
+        snack = ft.SnackBar(
+            ft.Text(f"✅ {tema_nombre} activado", color="#FFFFFF"),
+            bgcolor=get_theme_colors()["success"],
+        )
+        self.page.overlay.append(snack)
+        snack.open = True
+        self.page.update()
 
     def _crear_interfaz(self):
         """Crea toda la interfaz de usuario con diseño profesional."""
 
         # Contenedor principal con padding
+        colors = get_theme_colors()
         contenido_principal = ft.Container(
             content=ft.Column(
                 controls=[
@@ -472,7 +524,7 @@ class VentanaPrincipal:
                 scroll=ft.ScrollMode.HIDDEN,  # Sin scroll
             ),
             padding=ft.padding.all(25),  # Padding reducido
-            bgcolor="#F8FAFC",  # Fondo gris claro
+            bgcolor=colors["surface_secondary"],
             expand=True,
         )
 
@@ -480,19 +532,38 @@ class VentanaPrincipal:
         self.page.add(contenido_principal)
 
     def _crear_header(self):
-        """Crea el header profesional moderno."""
+        """Crea el header profesional moderno con toggle de tema."""
+        colors = get_theme_colors()
+        
         self.contador_registros = ft.Text(
             "Registros: 0", 
             size=14, 
             weight=ft.FontWeight.W_600,
-            color="#1F2937"
+            color=colors["text_primary"]
         )
 
         self.archivo_actual_text = ft.Text(
             "Ningún archivo seleccionado",
             size=14,
             weight=ft.FontWeight.W_500,
-            color="#6B7280"
+            color=colors["text_secondary"]
+        )
+
+        # Botón de toggle de tema
+        theme_icon = ft.Icons.DARK_MODE if not is_dark_theme() else ft.Icons.LIGHT_MODE
+        theme_tooltip = "Activar tema oscuro" if not is_dark_theme() else "Activar tema claro"
+        
+        btn_theme_toggle = ft.IconButton(
+            icon=theme_icon,
+            tooltip=theme_tooltip,
+            on_click=self._toggle_theme,
+            icon_color=colors["primary"],
+            icon_size=22,
+            style=ft.ButtonStyle(
+                bgcolor=colors["surface_tertiary"],
+                shape=ft.CircleBorder(),
+                padding=ft.Padding(8, 8, 8, 8),
+            ),
         )
 
         return ft.Container(
@@ -505,11 +576,11 @@ class VentanaPrincipal:
                                 content=ft.Icon(
                                     ft.Icons.GAVEL, 
                                     size=40, 
-                                    color="#FFFFFF"
+                                    color=colors["text_on_primary"]
                                 ),
                                 width=60,
                                 height=60,
-                                bgcolor="#1E40AF",  # Azul profesional
+                                bgcolor=colors["primary"],
                                 border_radius=15,
                                 alignment=ft.alignment.center,
                             ),
@@ -519,12 +590,12 @@ class VentanaPrincipal:
                                         "GESTOR DE AUDIENCIAS", 
                                         size=24, 
                                         weight=ft.FontWeight.BOLD, 
-                                        color="#1F2937"
+                                        color=colors["text_primary"]
                                     ),
                                     ft.Text(
                                         "Sistema Judicial Profesional", 
                                         size=14, 
-                                        color="#6B7280",
+                                        color=colors["text_secondary"],
                                         italic=True
                                     ),
                                 ],
@@ -540,61 +611,70 @@ class VentanaPrincipal:
                     ft.Container(
                         content=ft.Row(
                             controls=[
-                                ft.Icon(ft.Icons.FOLDER_OUTLINED, size=18, color="#1E40AF"),
+                                ft.Icon(ft.Icons.FOLDER_OUTLINED, size=18, color=colors["primary"]),
                                 self.archivo_actual_text,
                             ],
                             spacing=8,
                             alignment=ft.MainAxisAlignment.CENTER,
                         ),
-                        bgcolor="#F3F4F6",  # Gris muy claro
+                        bgcolor=colors["surface_tertiary"],
                         border_radius=20,
                         padding=ft.padding.symmetric(horizontal=20, vertical=12),
-                        border=ft.border.all(1, "#D1D5DB"),
+                        border=ft.border.all(1, colors["surface_border"]),
                     ),
                     
-                    # Contador de registros (separado)
-                    ft.Container(
-                        content=ft.Row(
-                            controls=[
-                                ft.Icon(ft.Icons.ANALYTICS_OUTLINED, size=18, color="#1E40AF"),
-                                self.contador_registros,
-                            ],
-                            spacing=8,
-                            alignment=ft.MainAxisAlignment.CENTER,
-                        ),
-                        bgcolor="#EFF6FF",  # Azul muy claro
-                        border_radius=20,
-                        padding=ft.padding.symmetric(horizontal=20, vertical=12),
-                        border=ft.border.all(1, "#DBEAFE"),
+                    # Contador de registros y toggle de tema
+                    ft.Row(
+                        controls=[
+                            ft.Container(
+                                content=ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.ANALYTICS_OUTLINED, size=18, color=colors["primary"]),
+                                        self.contador_registros,
+                                    ],
+                                    spacing=8,
+                                    alignment=ft.MainAxisAlignment.CENTER,
+                                ),
+                                bgcolor=colors["primary_light"] if not is_dark_theme() else colors["surface_tertiary"],
+                                border_radius=20,
+                                padding=ft.padding.symmetric(horizontal=20, vertical=12),
+                                border=ft.border.all(1, colors["surface_border"]),
+                            ),
+                            btn_theme_toggle,
+                        ],
+                        spacing=10,
+                        alignment=ft.MainAxisAlignment.END,
                     ),
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            bgcolor="#FFFFFF",
+            bgcolor=colors["header_bg"],
             border_radius=20,
             padding=30,
             shadow=ft.BoxShadow(
                 spread_radius=0,
                 blur_radius=10,
-                color="#00000010",
+                color="#00000010" if not is_dark_theme() else "#00000030",
                 offset=ft.Offset(0, 2),
             ),
-            border=ft.border.all(1, "#E5E7EB"),
+            border=ft.border.all(1, colors["surface_border"]),
         )
 
     def _crear_formulario(self):
         """Crea el formulario principal con diseño de dos columnas sin scroll."""
+        colors = get_theme_colors()
+        
         # Título principal del formulario (compacto)
         titulo_principal = ft.Container(
             content=ft.Row(
                 controls=[
-                    ft.Icon(ft.Icons.EDIT_NOTE_OUTLINED, size=24, color="#1E3A8A"),
+                    ft.Icon(ft.Icons.EDIT_NOTE_OUTLINED, size=24, color=colors["primary"]),
                     ft.Text(
                         "INFORMACIÓN DE LA AUDIENCIA", 
                         size=18, 
                         weight=ft.FontWeight.BOLD, 
-                        color="#1E3A8A"
+                        color=colors["primary"]
                     ),
                 ],
                 spacing=10,
@@ -613,12 +693,12 @@ class VentanaPrincipal:
                             # Encabezado de sección (compacto)
                             ft.Row(
                                 controls=[
-                                    ft.Icon(ft.Icons.FOLDER_OUTLINED, size=18, color="#374151"),
+                                    ft.Icon(ft.Icons.FOLDER_OUTLINED, size=18, color=colors["text_primary"]),
                                     ft.Text(
                                         "IDENTIFICACIÓN DEL PROCESO",
                                         size=14,
                                         weight=ft.FontWeight.BOLD,
-                                        color="#374151"
+                                        color=colors["text_primary"]
                                     ),
                                 ],
                                 spacing=8,
@@ -634,10 +714,10 @@ class VentanaPrincipal:
                         spacing=3,
                         alignment=ft.MainAxisAlignment.START,
                     ),
-                    bgcolor="#F9FAFB",
+                    bgcolor=colors["surface_tertiary"],
                     border_radius=10,
                     padding=ft.padding.all(15),
-                    border=ft.border.all(1, "#D1D5DB"),
+                    border=ft.border.all(1, colors["surface_border"]),
                 ),
                 
                 ft.Container(height=15),  # Espaciado entre secciones
@@ -649,12 +729,12 @@ class VentanaPrincipal:
                             # Encabezado de sección (compacto)
                             ft.Row(
                                 controls=[
-                                    ft.Icon(ft.Icons.SETTINGS_OUTLINED, size=18, color="#374151"),
+                                    ft.Icon(ft.Icons.SETTINGS_OUTLINED, size=18, color=colors["text_primary"]),
                                     ft.Text(
                                         "CONFIGURACIÓN DE LA AUDIENCIA",
                                         size=14,
                                         weight=ft.FontWeight.BOLD,
-                                        color="#374151"
+                                        color=colors["text_primary"]
                                     ),
                                 ],
                                 spacing=8,
@@ -670,10 +750,10 @@ class VentanaPrincipal:
                         spacing=3,
                         alignment=ft.MainAxisAlignment.START,
                     ),
-                    bgcolor="#F9FAFB",
+                    bgcolor=colors["surface_tertiary"],
                     border_radius=10,
                     padding=ft.padding.all(15),
-                    border=ft.border.all(1, "#D1D5DB"),
+                    border=ft.border.all(1, colors["surface_border"]),
                 ),
             ],
             expand=True,
@@ -691,12 +771,12 @@ class VentanaPrincipal:
                             # Encabezado de sección (compacto)
                             ft.Row(
                                 controls=[
-                                    ft.Icon(ft.Icons.SCHEDULE_OUTLINED, size=18, color="#374151"),
+                                    ft.Icon(ft.Icons.SCHEDULE_OUTLINED, size=18, color=colors["text_primary"]),
                                     ft.Text(
                                         "PROGRAMACIÓN",
                                         size=14,
                                         weight=ft.FontWeight.BOLD,
-                                        color="#374151"
+                                        color=colors["text_primary"]
                                     ),
                                 ],
                                 spacing=8,
@@ -712,8 +792,8 @@ class VentanaPrincipal:
                         spacing=3,
                         alignment=ft.MainAxisAlignment.START,
                     ),
-                    bgcolor="#F9FAFB",
-                    border=ft.border.all(1, "#D1D5DB"),
+                    bgcolor=colors["surface_tertiary"],
+                    border=ft.border.all(1, colors["surface_border"]),
                     border_radius=10,
                     padding=15,
                 ),
@@ -727,12 +807,12 @@ class VentanaPrincipal:
                             # Encabezado de sección (compacto)
                             ft.Row(
                                 controls=[
-                                    ft.Icon(ft.Icons.ERROR_OUTLINE, size=18, color="#DC2626"),
+                                    ft.Icon(ft.Icons.ERROR_OUTLINE, size=18, color=colors["error"]),
                                     ft.Text(
                                         "MOTIVOS DE NO REALIZACIÓN",
                                         size=14,
                                         weight=ft.FontWeight.BOLD,
-                                        color="#DC2626"
+                                        color=colors["error"]
                                     ),
                                 ],
                                 spacing=8,
@@ -746,14 +826,14 @@ class VentanaPrincipal:
                         spacing=3,
                         alignment=ft.MainAxisAlignment.START,
                     ),
-                    bgcolor="#FEFEFE",
+                    bgcolor=colors["error_light"],
                     border_radius=12,
                     padding=ft.padding.all(18),
-                    border=ft.border.all(1, "#FECACA"),
+                    border=ft.border.all(1, colors["error"]),
                     shadow=ft.BoxShadow(
                         spread_radius=0,
                         blur_radius=8,
-                        color="#DC262620",
+                        color=f"{colors['error']}20",
                         offset=ft.Offset(0, 2),
                     ),
                 ),
@@ -785,12 +865,12 @@ class VentanaPrincipal:
                             # Encabezado de sección (compacto)
                             ft.Row(
                                 controls=[
-                                    ft.Icon(ft.Icons.NOTES_OUTLINED, size=18, color="#374151"),
+                                    ft.Icon(ft.Icons.NOTES_OUTLINED, size=18, color=colors["text_primary"]),
                                     ft.Text(
                                         "OBSERVACIONES ADICIONALES",
                                         size=14,
                                         weight=ft.FontWeight.BOLD,
-                                        color="#374151"
+                                        color=colors["text_primary"]
                                     ),
                                 ],
                                 spacing=8,
@@ -802,8 +882,8 @@ class VentanaPrincipal:
                         ],
                         spacing=3,
                     ),
-                    bgcolor="#F9FAFB",
-                    border=ft.border.all(1, "#D1D5DB"),
+                    bgcolor=colors["surface_tertiary"],
+                    border=ft.border.all(1, colors["surface_border"]),
                     border_radius=10,
                     padding=15,
                     expand=1,
@@ -820,11 +900,12 @@ class VentanaPrincipal:
         )
 
         # === CONTENEDOR PRINCIPAL SIN SCROLL ===
+        colors = get_theme_colors()
         return ft.Container(
             content=ft.Column(
                 controls=[
                     titulo_principal,
-                    ft.Divider(height=1, color="#E5E7EB"),
+                    ft.Divider(height=1, color=colors["surface_border"]),
                     ft.Container(height=15),  # Espaciado reducido
                     
                     row_principal,  # Las dos columnas principales
@@ -839,31 +920,34 @@ class VentanaPrincipal:
                 expand=True,
                 scroll=ft.ScrollMode.HIDDEN,  # Sin scroll
             ),
-            bgcolor="#F8FAFC", 
+            bgcolor=colors["form_bg"], 
             border_radius=16,
             padding=ft.padding.all(20),  # Padding reducido
             expand=True,
         )
 
     def _crear_campo_radicado(self):
-        """Campo de radicado con diseño mejorado y colores claros."""
+        """Campo de radicado con diseño mejorado y colores dinámicos."""
+        colors = get_theme_colors()
         self.entrada_radicado = ft.TextField(
             label="Número de radicado",
             hint_text="Ej: 11001-60-00000-2024-00000-00",
             border_radius=12,
             filled=True,
-            bgcolor="#FFFFFF",  # Fondo blanco completamente claro
-            border_color="#E5E7EB",
-            focused_border_color="#1E40AF",
+            bgcolor=colors["surface_primary"],
+            border_color=colors["surface_border"],
+            focused_border_color=colors["primary"],
             prefix_icon=ft.Icons.FOLDER_OUTLINED,
-            text_style=ft.TextStyle(size=14, color="#1F2937"),
-            label_style=ft.TextStyle(size=13, color="#6B7280"),
+            text_style=ft.TextStyle(size=14, color=colors["text_primary"]),
+            label_style=ft.TextStyle(size=13, color=colors["text_secondary"]),
             content_padding=ft.Padding(12, 10, 12, 10),
         )
         return self.entrada_radicado
 
     def _crear_campo_tipo_audiencia(self):
-        """Campo de tipo de audiencia con diseño mejorado y colores claros."""
+        """Campo de tipo de audiencia con diseño mejorado y colores dinámicos."""
+        colors = get_theme_colors()
+        
         self.combo_tipo = ft.Dropdown(
             label="Tipo de audiencia",
             hint_text="Seleccione el tipo de audiencia...",
@@ -871,11 +955,11 @@ class VentanaPrincipal:
             on_change=self._on_tipo_change,
             border_radius=12,
             filled=True,
-            bgcolor="#FFFFFF",  # Fondo blanco completamente claro
-            border_color="#E5E7EB",
-            focused_border_color="#1E40AF",
-            text_style=ft.TextStyle(size=14, color="#1F2937"),
-            label_style=ft.TextStyle(size=13, color="#6B7280"),
+            bgcolor=colors["surface_primary"],
+            border_color=colors["surface_border"],
+            focused_border_color=colors["primary"],
+            text_style=ft.TextStyle(size=14, color=colors["text_primary"]),
+            label_style=ft.TextStyle(size=13, color=colors["text_secondary"]),
             content_padding=ft.Padding(12, 10, 12, 10),
         )
 
@@ -884,11 +968,11 @@ class VentanaPrincipal:
             hint_text="Escriba el tipo de audiencia...",
             border_radius=12,
             filled=True,
-            bgcolor="#FFFBEB",  # Amarillo muy suave para diferenciarlo
-            border_color="#F59E0B",
-            focused_border_color="#D97706",
-            text_style=ft.TextStyle(size=14, color="#1F2937"),
-            label_style=ft.TextStyle(size=13, color="#92400E"),
+            bgcolor=colors["warning_light"],
+            border_color=colors["warning"],
+            focused_border_color=colors["warning"],
+            text_style=ft.TextStyle(size=14, color=colors["text_primary"]),
+            label_style=ft.TextStyle(size=13, color=colors["warning"]),
             content_padding=ft.Padding(12, 10, 12, 10),
             visible=False,
         )
@@ -903,6 +987,8 @@ class VentanaPrincipal:
 
     def _crear_campo_fecha(self):
         """Campo de fecha con DatePicker unificado y formateo en tiempo real."""
+        colors = get_theme_colors()
+        
         # DatePicker principal
         self.date_picker = ft.DatePicker(
             first_date=datetime(datetime.now().year - 1, 1, 1),
@@ -918,11 +1004,11 @@ class VentanaPrincipal:
             max_length=10,  # DD/MM/AAAA = 10 caracteres
             border_radius=10,
             filled=True,
-            bgcolor="#FFFFFF",
-            border_color="#E5E7EB",
-            focused_border_color="#1E40AF",
-            text_style=ft.TextStyle(size=13, color="#1F2937"),
-            label_style=ft.TextStyle(size=12, color="#6B7280"),
+            bgcolor=colors["surface_primary"],
+            border_color=colors["surface_border"],
+            focused_border_color=colors["primary"],
+            text_style=ft.TextStyle(size=13, color=colors["text_primary"]),
+            label_style=ft.TextStyle(size=12, color=colors["text_secondary"]),
             content_padding=ft.Padding(12, 10, 12, 10),
             on_change=self._on_fecha_change_tiempo_real,
         )
@@ -932,10 +1018,10 @@ class VentanaPrincipal:
             icon=ft.Icons.CALENDAR_TODAY_OUTLINED,
             tooltip="Abrir calendario",
             on_click=self._abrir_date_picker,
-            icon_color="#1E40AF",
+            icon_color=colors["primary"],
             icon_size=20,
             style=ft.ButtonStyle(
-                bgcolor="#F8FAFC",
+                bgcolor=colors["surface_tertiary"],
                 shape=ft.RoundedRectangleBorder(radius=8),
                 padding=ft.Padding(8, 8, 8, 8),
             ),
@@ -975,16 +1061,18 @@ class VentanaPrincipal:
         return campo_fecha_row
 
     def _crear_campo_hora(self):
-        """Campo de hora con selección automática de texto al hacer clic."""
-        # Estilo claro y consistente para campos de hora
+        """Campo de hora con selección automática de texto al hacer clic y colores dinámicos."""
+        colors = get_theme_colors()
+        
+        # Estilo dinámico para campos de hora
         estilo_hora = {
             "border_radius": 10,
             "filled": True,
-            "bgcolor": "#FFFFFF",
-            "border_color": "#E5E7EB",
-            "focused_border_color": "#1E40AF",
-            "text_style": ft.TextStyle(size=13, color="#1F2937"),
-            "label_style": ft.TextStyle(size=12, color="#6B7280"),
+            "bgcolor": colors["surface_primary"],
+            "border_color": colors["surface_border"],
+            "focused_border_color": colors["primary"],
+            "text_style": ft.TextStyle(size=13, color=colors["text_primary"]),
+            "label_style": ft.TextStyle(size=12, color=colors["text_secondary"]),
             "text_align": ft.TextAlign.CENTER,
             "content_padding": ft.Padding(12, 10, 12, 10),
         }
@@ -1023,7 +1111,7 @@ class VentanaPrincipal:
             controls=[
                 self.entrada_hora,
                 ft.Container(
-                    content=ft.Text(":", size=20, color="#6B7280", weight=ft.FontWeight.BOLD),
+                    content=ft.Text(":", size=20, color=colors["text_secondary"], weight=ft.FontWeight.BOLD),
                     margin=ft.Margin(0, 15, 0, 0),  # Ajustar la posición vertical del separador
                 ),
                 self.entrada_minuto,
@@ -1034,24 +1122,26 @@ class VentanaPrincipal:
         )
 
     def _crear_campo_juzgado(self):
-        """Campo de juzgado con diseño mejorado y colores claros."""
+        """Campo de juzgado con diseño mejorado y colores dinámicos."""
+        colors = get_theme_colors()
         self.entrada_juzgado = ft.TextField(
             label="Juzgado o entidad",
             hint_text="Nombre del juzgado o entidad judicial",
             border_radius=12,
             filled=True,
-            bgcolor="#FFFFFF",  # Fondo blanco completamente claro
-            border_color="#E5E7EB",
-            focused_border_color="#1E40AF",
+            bgcolor=colors["surface_primary"],
+            border_color=colors["surface_border"],
+            focused_border_color=colors["primary"],
             prefix_icon=ft.Icons.ACCOUNT_BALANCE_OUTLINED,
-            text_style=ft.TextStyle(size=14, color="#1F2937"),
-            label_style=ft.TextStyle(size=13, color="#6B7280"),
+            text_style=ft.TextStyle(size=14, color=colors["text_primary"]),
+            label_style=ft.TextStyle(size=13, color=colors["text_secondary"]),
             content_padding=ft.Padding(12, 10, 12, 10),
         )
         return self.entrada_juzgado
 
     def _crear_campo_realizada(self):
-        """Campo ¿Se realizó? con diseño mejorado y colores claros."""
+        """Campo ¿Se realizó? con diseño mejorado y colores dinámicos."""
+        colors = get_theme_colors()
         self.combo_realizada = ft.Dropdown(
             label="¿Se realizó?",
             hint_text="Seleccione SI o NO",
@@ -1059,17 +1149,19 @@ class VentanaPrincipal:
             on_change=self._on_realizada_change,
             border_radius=10,
             filled=True,
-            bgcolor="#FFFFFF",  # Fondo blanco completamente claro
-            border_color="#E5E7EB",
-            focused_border_color="#1E40AF",
-            text_style=ft.TextStyle(size=13, color="#1F2937"),
-            label_style=ft.TextStyle(size=12, color="#6B7280"),
+            bgcolor=colors["surface_primary"],
+            border_color=colors["surface_border"],
+            focused_border_color=colors["primary"],
+            text_style=ft.TextStyle(size=13, color=colors["text_primary"]),
+            label_style=ft.TextStyle(size=12, color=colors["text_secondary"]),
             content_padding=ft.Padding(12, 10, 12, 10),
         )
         return self.combo_realizada
 
     def _crear_campo_motivos(self):
-        """Campo de motivos con diseño mejorado y checkboxes optimizados."""
+        """Campo de motivos con diseño mejorado y checkboxes optimizados con colores dinámicos."""
+        colors = get_theme_colors()
+        
         motivos_labels = [
             "Juez", "Fiscalía", "Usuario", "INPEC",
             "Víctima", "ICBF", "Defensor Confianza", "Defensor Público",
@@ -1079,14 +1171,14 @@ class VentanaPrincipal:
         checkboxes_row1 = []
         checkboxes_row2 = []
 
-        # Estilo mejorado para checkboxes con mejor contraste
+        # Estilo mejorado para checkboxes con colores dinámicos
         for i, motivo in enumerate(motivos_labels):
             checkbox = ft.Checkbox(
                 label=motivo,
                 disabled=True,
-                label_style=ft.TextStyle(size=13, color="#6B7280"),
-                check_color="#DC2626",
-                active_color="#FEE2E2",
+                label_style=ft.TextStyle(size=13, color=colors["text_secondary"]),
+                check_color=colors["error"],
+                active_color=colors["error_light"],
             )
             self.checkboxes_motivos.append(checkbox)
 
@@ -1114,10 +1206,10 @@ class VentanaPrincipal:
                 spacing=8,
                 alignment=ft.MainAxisAlignment.START,
             ),
-            bgcolor="#FEF2F2",  # Fondo rojo muy suave
+            bgcolor=colors["error_light"],
             border_radius=10,
             padding=ft.Padding(15, 12, 15, 12),
-            border=ft.border.all(1, "#FECACA"),  # Borde rojo suave
+            border=ft.border.all(1, colors["error"]),
         )
 
     def _crear_campo_observaciones(self):
@@ -1140,7 +1232,8 @@ class VentanaPrincipal:
         return self.entrada_observaciones
 
     def _crear_campo_observaciones_compacto(self):
-        """Campo de observaciones compacto para layout de dos columnas."""
+        """Campo de observaciones compacto para layout de dos columnas con colores dinámicos."""
+        colors = get_theme_colors()
         self.entrada_observaciones = ft.TextField(
             label="Observaciones",
             hint_text="Detalles adicionales de la audiencia...",
@@ -1149,11 +1242,11 @@ class VentanaPrincipal:
             max_lines=3,  # Reducido para que quepa en pantalla
             border_radius=10,
             filled=True,
-            bgcolor="#FFFFFF",
-            border_color="#E5E7EB",
-            focused_border_color="#1E40AF",
-            text_style=ft.TextStyle(size=13, color="#1F2937"),
-            label_style=ft.TextStyle(size=12, color="#6B7280"),
+            bgcolor=colors["surface_primary"],
+            border_color=colors["surface_border"],
+            focused_border_color=colors["primary"],
+            text_style=ft.TextStyle(size=13, color=colors["text_primary"]),
+            label_style=ft.TextStyle(size=12, color=colors["text_secondary"]),
             content_padding=ft.Padding(12, 8, 12, 8),  # Padding reducido
         )
         return self.entrada_observaciones
@@ -1225,18 +1318,13 @@ class VentanaPrincipal:
         )
 
     def _crear_botones_accion_compactos(self):
-        """Crea los botones de acción compactos para layout de dos columnas."""
+        """Crea los botones de acción compactos para layout de dos columnas con colores dinámicos."""
+        colors = get_theme_colors()
+        
         self.btn_guardar = ft.ElevatedButton(
             text="💾 GUARDAR AUDIENCIA",
             on_click=self._on_guardar,
-            style=ft.ButtonStyle(
-                bgcolor="#1E40AF",
-                color="#FFFFFF",
-                elevation=2,
-                shape=ft.RoundedRectangleBorder(radius=10),
-                padding=ft.Padding(16, 12, 16, 12),  # Padding reducido
-                text_style=ft.TextStyle(size=14, weight=ft.FontWeight.W_600),  # Texto más pequeño
-            ),
+            style=get_button_style_primary(),
             expand=True,
         )
 
@@ -1244,8 +1332,8 @@ class VentanaPrincipal:
             text="✏️ ACTUALIZAR REGISTRO",
             on_click=self._on_actualizar,
             style=ft.ButtonStyle(
-                bgcolor="#059669",
-                color="#FFFFFF",
+                bgcolor=colors["success"],
+                color=colors["text_on_primary"],
                 elevation=2,
                 shape=ft.RoundedRectangleBorder(radius=10),
                 padding=ft.Padding(16, 12, 16, 12),
@@ -1258,14 +1346,7 @@ class VentanaPrincipal:
         self.btn_cancelar_edicion = ft.ElevatedButton(
             text="❌ CANCELAR EDICIÓN",
             on_click=self._on_cancelar_edicion,
-            style=ft.ButtonStyle(
-                bgcolor="#DC2626",
-                color="#FFFFFF",
-                elevation=2,
-                shape=ft.RoundedRectangleBorder(radius=10),
-                padding=ft.Padding(16, 12, 16, 12),
-                text_style=ft.TextStyle(size=14, weight=ft.FontWeight.W_600),
-            ),
+            style=get_button_style_danger(),
             expand=True,
             visible=False,
         )
@@ -1280,23 +1361,25 @@ class VentanaPrincipal:
                 spacing=10,  # Espaciado reducido
             ),
             padding=ft.Padding(15, 10, 15, 15),  # Padding reducido
-            bgcolor="#FFFFFF",
+            bgcolor=colors["surface_card"],
             border_radius=12,
             shadow=ft.BoxShadow(
                 spread_radius=0,
                 blur_radius=4,
-                color="#0000001A",
+                color="#00000015" if not is_dark_theme() else "#00000030",
                 offset=ft.Offset(0, 1),
             ),
             expand=1,
         )
 
     def _crear_gestion_archivos(self):
-        """Crea la sección de gestión de archivos con diseño profesional."""
-        # Estilos para botones
+        """Crea la sección de gestión de archivos con diseño profesional y colores dinámicos."""
+        colors = get_theme_colors()
+        
+        # Estilos para botones con colores dinámicos
         estilo_boton_primario = ft.ButtonStyle(
-            bgcolor="#1E40AF",
-            color="#FFFFFF",
+            bgcolor=colors["primary"],
+            color=colors["text_on_primary"],
             elevation=2,
             shape=ft.RoundedRectangleBorder(radius=10),
             padding=ft.Padding(16, 12, 16, 12),
@@ -1304,8 +1387,8 @@ class VentanaPrincipal:
         )
         
         estilo_boton_secundario = ft.ButtonStyle(
-            bgcolor="#6B7280",
-            color="#FFFFFF",
+            bgcolor=colors["text_secondary"],
+            color=colors["text_on_primary"],
             elevation=2,
             shape=ft.RoundedRectangleBorder(radius=10),
             padding=ft.Padding(16, 12, 16, 12),
@@ -1313,8 +1396,8 @@ class VentanaPrincipal:
         )
         
         estilo_boton_peligro = ft.ButtonStyle(
-            bgcolor="#DC2626",
-            color="#FFFFFF",
+            bgcolor=colors["error"],
+            color=colors["text_on_primary"],
             elevation=2,
             shape=ft.RoundedRectangleBorder(radius=10),
             padding=ft.Padding(16, 12, 16, 12),
@@ -1370,12 +1453,12 @@ class VentanaPrincipal:
                 controls=[
                     ft.Row(
                         controls=[
-                            ft.Icon(ft.Icons.FOLDER_OPEN, size=24, color="#1E40AF"),
+                            ft.Icon(ft.Icons.FOLDER_OPEN, size=24, color=colors["primary"]),
                             ft.Text(
                                 "GESTIÓN DE ARCHIVOS",
                                 size=18,
                                 weight=ft.FontWeight.W_700,
-                                color="#1F2937",
+                                color=colors["text_primary"],
                             ),
                         ],
                         spacing=10,
@@ -1387,13 +1470,13 @@ class VentanaPrincipal:
                 spacing=12,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            bgcolor="#FFFFFF",
+            bgcolor=colors["surface_card"],
             border_radius=16,
             padding=ft.Padding(20, 20, 20, 20),
             shadow=ft.BoxShadow(
                 spread_radius=0,
                 blur_radius=8,
-                color="#0000001A",
+                color="#00000015" if not is_dark_theme() else "#00000030",
                 offset=ft.Offset(0, 2),
             ),
         )
