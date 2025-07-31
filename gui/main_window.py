@@ -462,6 +462,9 @@ class VentanaPrincipal:
         self._configurar_pagina()
         self._crear_interfaz()
         self._inicializar()
+        
+        # Mostrar mensaje de bienvenida con atajos (solo la primera vez)
+        self._mostrar_bienvenida_atajos()
 
     def _configurar_pagina(self):
         """Configura las propiedades de la página."""
@@ -493,6 +496,12 @@ class VentanaPrincipal:
                 on_surface=colors["text_primary"],
             )
         )
+        
+        # Configurar atajos de teclado
+        self.page.on_keyboard_event = self._on_keyboard_event
+        
+        # Asegurar que la página pueda recibir eventos de teclado
+        self.page.auto_scroll = True
 
     def _toggle_theme(self, e):
         """Alternar entre tema claro y oscuro"""
@@ -571,7 +580,7 @@ class VentanaPrincipal:
 
         # Botón de toggle de tema
         theme_icon = ft.Icons.DARK_MODE if not is_dark_theme() else ft.Icons.LIGHT_MODE
-        theme_tooltip = "Activar tema oscuro" if not is_dark_theme() else "Activar tema claro"
+        theme_tooltip = "Activar tema oscuro (Ctrl+T)" if not is_dark_theme() else "Activar tema claro (Ctrl+T)"
         
         btn_theme_toggle = ft.IconButton(
             icon=theme_icon,
@@ -583,6 +592,20 @@ class VentanaPrincipal:
                 bgcolor=colors["surface_tertiary"],
                 shape=ft.CircleBorder(),
                 padding=ft.Padding(8, 8, 8, 8),
+            ),
+        )
+
+        # Botón de atajos de teclado (indicador visual)
+        btn_atajos = ft.IconButton(
+            icon=ft.Icons.KEYBOARD,
+            tooltip="Ver atajos de teclado (F1)",
+            on_click=lambda e: self._mostrar_ayuda_atajos(),
+            icon_color=colors["text_secondary"],
+            icon_size=20,
+            style=ft.ButtonStyle(
+                bgcolor=colors["surface_primary"],
+                shape=ft.CircleBorder(),
+                padding=ft.Padding(6, 6, 6, 6),
             ),
         )
 
@@ -627,8 +650,14 @@ class VentanaPrincipal:
                         alignment=ft.MainAxisAlignment.START,
                     ),
                     
-                    # Sección derecha: Solo toggle de tema
-                    btn_theme_toggle,
+                    # Sección derecha: Botones de utilidad
+                    ft.Row(
+                        controls=[
+                            btn_atajos,
+                            btn_theme_toggle,
+                        ],
+                        spacing=8,
+                    ),
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -1361,28 +1390,28 @@ class VentanaPrincipal:
             text="💾 Guardar",
             on_click=self._on_guardar,
             style=get_action_button_primary(),
-            tooltip="Guardar nueva audiencia",
+            tooltip="Guardar nueva audiencia (Ctrl+S)",
         )
         
         btn_nuevo_archivo = ft.ElevatedButton(
             text="📄 Nuevo",
             on_click=self._on_crear_archivo,
             style=get_action_button_secondary(),
-            tooltip="Crear nuevo archivo",
+            tooltip="Crear nuevo archivo (Ctrl+N)",
         )
         
         btn_abrir_archivo = ft.ElevatedButton(
             text="📂 Abrir",
             on_click=self._on_seleccionar_archivo,
             style=get_action_button_secondary(),
-            tooltip="Abrir archivo existente",
+            tooltip="Abrir archivo existente (Ctrl+O)",
         )
         
         btn_editar_registro = ft.ElevatedButton(
             text="✏️ Editar",
             on_click=self._on_editar_registro,
             style=get_action_button_secondary(),
-            tooltip="Editar registro existente",
+            tooltip="Editar registro existente (Ctrl+E)",
         )
         
         # Botones para modo edición
@@ -1390,7 +1419,7 @@ class VentanaPrincipal:
             text="✅ Actualizar",
             on_click=self._on_actualizar,
             style=get_action_button_success(),
-            tooltip="Guardar cambios del registro",
+            tooltip="Guardar cambios del registro (F5)",
             visible=False,
         )
         
@@ -1398,7 +1427,7 @@ class VentanaPrincipal:
             text="❌ Cancelar",
             on_click=self._on_cancelar_edicion,
             style=get_action_button_danger(),
-            tooltip="Cancelar edición",
+            tooltip="Cancelar edición (Escape)",
             visible=False,
         )
         
@@ -1415,14 +1444,14 @@ class VentanaPrincipal:
             text="🗑️ Eliminar",
             on_click=self._on_eliminar_archivo,
             style=get_action_button_danger(),
-            tooltip="Eliminar archivo",
+            tooltip="Eliminar archivo (Ctrl+D)",
         )
         
         btn_descargar = ft.ElevatedButton(
             text="⬇️ Descargar",
             on_click=self._on_descargar_archivo,
             style=get_action_button_secondary(),
-            tooltip="Descargar archivo",
+            tooltip="Descargar archivo (Ctrl+Shift+S)",
         )
         
         # Guardar referencias para poder cambiar visibilidad
@@ -1711,6 +1740,459 @@ class VentanaPrincipal:
     def _on_descargar_archivo(self, e):
         """Descarga un archivo."""
         self.descargar_archivo_trabajo()
+
+    def _on_keyboard_event(self, e: ft.KeyboardEvent):
+        """Maneja los atajos de teclado globales."""        
+        # Verificar modificadores
+        ctrl_pressed = e.ctrl
+        shift_pressed = e.shift
+        key = e.key.lower()  # Convertir a minúsculas para comparación consistente
+        
+        # === ATAJOS PRINCIPALES ===
+        
+        # Ctrl+S - Guardar audiencia
+        if ctrl_pressed and key == "s":
+            if not self.modo_edicion:
+                self._on_guardar(None)
+                self._mostrar_mensaje_atajo("💾 Guardando audiencia... (Ctrl+S)")
+                e.page.update()
+                return
+        
+        # Ctrl+N - Nuevo archivo
+        elif ctrl_pressed and key == "n":
+            self._on_crear_archivo(None)
+            self._mostrar_mensaje_atajo("📄 Creando nuevo archivo... (Ctrl+N)")
+            e.page.update()
+            return
+            
+        # Ctrl+O - Abrir archivo
+        elif ctrl_pressed and key == "o":
+            self._on_seleccionar_archivo(None)
+            self._mostrar_mensaje_atajo("📂 Abriendo archivo... (Ctrl+O)")
+            e.page.update()
+            return
+            
+        # Ctrl+E - Editar registro
+        elif ctrl_pressed and key == "e":
+            self._on_editar_registro(None)
+            self._mostrar_mensaje_atajo("✏️ Editando registro... (Ctrl+E)")
+            e.page.update()
+            return
+            
+        # F5 - Actualizar/Refrescar
+        elif key == "f5":
+            if self.modo_edicion:
+                self._on_actualizar(None)
+                self._mostrar_mensaje_atajo("✅ Actualizando registro... (F5)")
+            else:
+                self._inicializar()
+                self._mostrar_mensaje_atajo("🔄 Refrescando formulario... (F5)")
+            e.page.update()
+            return
+            
+        # === NAVEGACIÓN Y EDICIÓN ===
+        
+        # Ctrl+L - Limpiar formulario
+        elif ctrl_pressed and key == "l":
+            self.limpiar_campos()
+            self._mostrar_mensaje_atajo("🧹 Formulario limpiado (Ctrl+L)")
+            e.page.update()
+            return
+            
+        # Escape - Cancelar edición
+        elif key == "escape":
+            if self.modo_edicion:
+                self._on_cancelar_edicion(None)
+                self._mostrar_mensaje_atajo("❌ Edición cancelada (Escape)")
+                e.page.update()
+                return
+                
+        # Ctrl+D - Eliminar archivo
+        elif ctrl_pressed and key == "d":
+            self._on_eliminar_archivo(None)
+            self._mostrar_mensaje_atajo("🗑️ Eliminando archivo... (Ctrl+D)")
+            e.page.update()
+            return
+            
+        # Ctrl+Shift+S - Descargar archivo
+        elif ctrl_pressed and shift_pressed and key == "s":
+            self._on_descargar_archivo(None)
+            self._mostrar_mensaje_atajo("⬇️ Descargando archivo... (Ctrl+Shift+S)")
+            e.page.update()
+            return
+            
+        # === INTERFAZ ===
+        
+        # Ctrl+T - Toggle tema
+        elif ctrl_pressed and key == "t":
+            self._toggle_theme(None)
+            # No mostrar mensaje adicional porque _toggle_theme ya muestra uno
+            return
+            
+        # F1 - Ayuda/Información sobre atajos
+        elif key == "f1":
+            self._mostrar_ayuda_atajos()
+            e.page.update()
+            return
+
+    def _mostrar_mensaje_atajo(self, mensaje: str):
+        """Muestra un mensaje temporal cuando se usa un atajo de teclado."""
+        colors = get_theme_colors()
+        snack = ft.SnackBar(
+            ft.Text(mensaje, color=colors["text_on_primary"]),
+            bgcolor=colors["primary_light"] if not is_dark_theme() else colors["surface_tertiary"],
+            duration=1500,  # 1.5 segundos
+        )
+        self.page.overlay.append(snack)
+        snack.open = True
+
+    def _mostrar_ayuda_atajos(self):
+        """Muestra un diálogo con todos los atajos de teclado disponibles."""
+        colors = get_theme_colors()
+        
+        # Crear el contenido organizado en secciones
+        contenido_principal = ft.Column(
+            controls=[
+                # Encabezado principal
+                ft.Container(
+                    content=ft.Row(
+                        controls=[
+                            ft.Icon(ft.Icons.KEYBOARD, size=24, color=colors["primary"]),
+                            ft.Text(
+                                "ATAJOS DE TECLADO DISPONIBLES",
+                                size=16,
+                                weight=ft.FontWeight.BOLD,
+                                color=colors["text_primary"]
+                            ),
+                        ],
+                        spacing=10,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    ),
+                    bgcolor=colors["primary_light"] if not is_dark_theme() else colors["surface_tertiary"],
+                    border_radius=10,
+                    padding=ft.padding.all(15),
+                    margin=ft.margin.only(bottom=15),
+                ),
+                
+                # Sección 1: Acciones Principales
+                self._crear_seccion_atajos(
+                    "� ACCIONES PRINCIPALES",
+                    [
+                        ("Ctrl+S", "Guardar audiencia"),
+                        ("Ctrl+N", "Crear nuevo archivo"),
+                        ("Ctrl+O", "Abrir archivo"),
+                        ("Ctrl+E", "Editar registro"),
+                        ("F5", "Actualizar/Refrescar"),
+                    ],
+                    colors
+                ),
+                
+                # Sección 2: Navegación y Edición
+                self._crear_seccion_atajos(
+                    "⚡ NAVEGACIÓN Y EDICIÓN",
+                    [
+                        ("Ctrl+L", "Limpiar formulario"),
+                        ("Escape", "Cancelar edición"),
+                        ("Ctrl+D", "Eliminar archivo"),
+                        ("Ctrl+Shift+S", "Descargar archivo"),
+                    ],
+                    colors
+                ),
+                
+                # Sección 3: Interfaz
+                self._crear_seccion_atajos(
+                    "🎨 INTERFAZ",
+                    [
+                        ("Ctrl+T", "Cambiar tema"),
+                        ("F1", "Mostrar esta ayuda"),
+                        ("Tab", "Navegar entre campos"),
+                    ],
+                    colors
+                ),
+                
+                # Consejos
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Text(
+                                "💡 CONSEJOS",
+                                size=14,
+                                weight=ft.FontWeight.BOLD,
+                                color=colors["primary"]
+                            ),
+                            ft.Text(
+                                "• Los atajos funcionan desde cualquier parte de la aplicación\n"
+                                "• En modo edición, F5 actualiza el registro\n"
+                                "• En modo normal, F5 refresca el formulario\n"
+                                "• Este diálogo siempre está disponible con F1",
+                                size=12,
+                                color=colors["text_secondary"]
+                            ),
+                        ],
+                        spacing=8,
+                    ),
+                    bgcolor=colors["surface_tertiary"],
+                    border_radius=8,
+                    padding=ft.padding.all(12),
+                    margin=ft.margin.only(top=10),
+                ),
+            ],
+            spacing=10,
+            scroll=ft.ScrollMode.AUTO,
+        )
+        
+        dialog = ft.AlertDialog(
+            title=ft.Text(
+                "⌨️ Guía de Atajos", 
+                size=20, 
+                weight=ft.FontWeight.BOLD,
+                color=colors["text_primary"]
+            ),
+            content=ft.Container(
+                content=contenido_principal,
+                width=500,
+                height=500,
+                padding=ft.padding.all(5),
+            ),
+            actions=[
+                ft.Row(
+                    controls=[
+                        ft.TextButton(
+                            "📋 Recordar siempre",
+                            on_click=lambda e: self._recordar_atajos(dialog),
+                            style=ft.ButtonStyle(
+                                color=colors["text_secondary"],
+                                text_style=ft.TextStyle(size=13)
+                            ),
+                        ),
+                        ft.ElevatedButton(
+                            "✅ Entendido",
+                            on_click=lambda e: self._cerrar_dialog(dialog),
+                            style=ft.ButtonStyle(
+                                bgcolor=colors["primary"],
+                                color=colors["text_on_primary"],
+                                text_style=ft.TextStyle(weight=ft.FontWeight.W_600)
+                            ),
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+            ],
+            bgcolor=colors["surface_primary"],
+            title_padding=ft.padding.all(20),
+            content_padding=ft.padding.all(10),
+            actions_padding=ft.padding.all(15),
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+
+    def _crear_seccion_atajos(self, titulo, atajos, colors):
+        """Crea una sección organizada de atajos."""
+        items = []
+        for atajo, descripcion in atajos:
+            items.append(
+                ft.Row(
+                    controls=[
+                        ft.Container(
+                            content=ft.Text(
+                                atajo,
+                                size=12,
+                                weight=ft.FontWeight.BOLD,
+                                color=colors["text_on_primary"]
+                            ),
+                            bgcolor=colors["primary"],
+                            border_radius=6,
+                            padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                            width=120,
+                        ),
+                        ft.Text(
+                            descripcion,
+                            size=13,
+                            color=colors["text_primary"],
+                            expand=True,
+                        ),
+                    ],
+                    spacing=12,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                )
+            )
+        
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text(
+                        titulo,
+                        size=14,
+                        weight=ft.FontWeight.BOLD,
+                        color=colors["primary"]
+                    ),
+                    *items,
+                ],
+                spacing=8,
+            ),
+            bgcolor=colors["surface_secondary"],
+            border_radius=8,
+            padding=ft.padding.all(12),
+            margin=ft.margin.only(bottom=5),
+        )
+
+    def _recordar_atajos(self, dialog):
+        """Función para recordar mostrar los atajos (futura implementación)."""
+        self._mostrar_mensaje_atajo("📌 Los atajos siempre están disponibles con F1")
+        self._cerrar_dialog(dialog)
+
+    def _mostrar_bienvenida_atajos(self):
+        """Muestra un mensaje de bienvenida con información sobre atajos."""
+        # Usar un delay para que se muestre después de que la interfaz esté completamente cargada
+        import threading
+        import time
+        
+        def mostrar_con_delay():
+            time.sleep(1)  # Esperar 1 segundo
+            self.page.run_thread(self._mostrar_bienvenida_dialog)
+        
+        # Ejecutar en un hilo separado para no bloquear la UI
+        threading.Thread(target=mostrar_con_delay, daemon=True).start()
+
+    def _mostrar_bienvenida_dialog(self):
+        """Muestra el diálogo de bienvenida."""
+        colors = get_theme_colors()
+        
+        dialog = ft.AlertDialog(
+            title=ft.Row(
+                controls=[
+                    ft.Icon(ft.Icons.WAVING_HAND, size=28, color=colors["primary"]),
+                    ft.Text(
+                        "¡Bienvenido al Gestor de Audiencias!", 
+                        size=18, 
+                        weight=ft.FontWeight.BOLD,
+                        color=colors["text_primary"]
+                    ),
+                ],
+                spacing=10,
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            content=ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text(
+                            "🎯 Para una experiencia más rápida, puedes usar atajos de teclado:",
+                            size=14,
+                            color=colors["text_primary"],
+                            weight=ft.FontWeight.W_500,
+                        ),
+                        ft.Container(height=10),
+                        
+                        # Atajos más importantes
+                        ft.Container(
+                            content=ft.Column(
+                                controls=[
+                                    self._crear_atajo_info("Ctrl+S", "Guardar audiencia", colors),
+                                    self._crear_atajo_info("Ctrl+N", "Nuevo archivo", colors),
+                                    self._crear_atajo_info("Ctrl+O", "Abrir archivo", colors),
+                                    self._crear_atajo_info("F1", "Ver todos los atajos", colors),
+                                ],
+                                spacing=8,
+                            ),
+                            bgcolor=colors["surface_tertiary"],
+                            border_radius=10,
+                            padding=ft.padding.all(15),
+                        ),
+                        
+                        ft.Container(height=10),
+                        ft.Text(
+                            "💡 Tip: Presiona F1 en cualquier momento para ver la lista completa de atajos.",
+                            size=12,
+                            color=colors["text_secondary"],
+                            italic=True,
+                        ),
+                    ],
+                    spacing=5,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                width=400,
+                padding=ft.padding.all(10),
+            ),
+            actions=[
+                ft.Row(
+                    controls=[
+                        ft.TextButton(
+                            "Ver todos los atajos",
+                            on_click=lambda e: self._cambiar_a_ayuda_completa(dialog),
+                            style=ft.ButtonStyle(
+                                color=colors["primary"],
+                                text_style=ft.TextStyle(size=13)
+                            ),
+                        ),
+                        ft.ElevatedButton(
+                            "¡Entendido!",
+                            on_click=lambda e: self._cerrar_dialog(dialog),
+                            style=ft.ButtonStyle(
+                                bgcolor=colors["primary"],
+                                color=colors["text_on_primary"],
+                                text_style=ft.TextStyle(weight=ft.FontWeight.W_600)
+                            ),
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+            ],
+            bgcolor=colors["surface_primary"],
+            title_padding=ft.padding.all(20),
+            content_padding=ft.padding.all(10),
+            actions_padding=ft.padding.all(15),
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+
+    def _crear_atajo_info(self, atajo, descripcion, colors):
+        """Crea una fila de información de atajo."""
+        return ft.Row(
+            controls=[
+                ft.Container(
+                    content=ft.Text(
+                        atajo,
+                        size=11,
+                        weight=ft.FontWeight.BOLD,
+                        color=colors["text_on_primary"]
+                    ),
+                    bgcolor=colors["primary"],
+                    border_radius=5,
+                    padding=ft.padding.symmetric(horizontal=8, vertical=3),
+                    width=80,
+                ),
+                ft.Text(
+                    descripcion,
+                    size=12,
+                    color=colors["text_primary"],
+                    expand=True,
+                ),
+            ],
+            spacing=10,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
+    def _cambiar_a_ayuda_completa(self, dialog_actual):
+        """Cierra el diálogo de bienvenida y abre la ayuda completa."""
+        self._cerrar_dialog(dialog_actual)
+        # Pequeño delay para que se vea la transición
+        import threading
+        import time
+        
+        def mostrar_ayuda():
+            time.sleep(0.3)
+            self.page.run_thread(self._mostrar_ayuda_atajos)
+        
+        threading.Thread(target=mostrar_ayuda, daemon=True).start()
+        
+    def _cerrar_dialog(self, dialog):
+        """Cierra un diálogo."""
+        dialog.open = False
+        self.page.update()
 
     # === MÉTODOS DE LÓGICA DE NEGOCIO ===
 
