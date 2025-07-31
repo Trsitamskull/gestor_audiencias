@@ -1,7 +1,6 @@
 import os
 import sys
 import shutil
-from tkinter import filedialog
 
 def obtener_directorio_real():
     """Devuelve la carpeta donde realmente se encuentra el .exe o .py"""
@@ -46,11 +45,22 @@ def eliminar_archivo(nombre_archivo):
     return False
 
 def descargar_archivo(nombre_archivo):
+    """Copia el archivo a la carpeta de Descargas del usuario."""
     ruta = os.path.join(CARPETA_ARCHIVOS, nombre_archivo)
     if not os.path.exists(ruta):
         raise FileNotFoundError("Archivo no encontrado.")
-    destino = filedialog.asksaveasfilename(defaultextension=".xlsx", initialfile=nombre_archivo)
-    if destino:
-        shutil.copy2(ruta, destino)
-        return destino
-    return None
+    
+    # Usar la carpeta de Descargas del usuario
+    carpeta_descargas = os.path.join(os.path.expanduser("~"), "Downloads")
+    destino = os.path.join(carpeta_descargas, nombre_archivo)
+    
+    # Si ya existe, añadir un número
+    contador = 1
+    base_nombre, extension = os.path.splitext(nombre_archivo)
+    while os.path.exists(destino):
+        nuevo_nombre = f"{base_nombre}_{contador}{extension}"
+        destino = os.path.join(carpeta_descargas, nuevo_nombre)
+        contador += 1
+    
+    shutil.copy2(ruta, destino)
+    return destino

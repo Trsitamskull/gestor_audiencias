@@ -1,4 +1,5 @@
 import flet as ft
+import traceback
 from typing import Optional
 from datetime import datetime
 
@@ -15,197 +16,372 @@ from gestor_archivos import (
 
 
 class DialogoCrearArchivo:
-    """Diálogo para crear un nuevo archivo."""
-
+    """Diálogo para crear un nuevo archivo con Flet."""
+    
     def __init__(self, page: ft.Page, callback):
         self.page = page
         self.callback = callback
-        self.dlg = None
-        self.entry = None
+        self.dialog = None
         self._crear_dialogo()
-
+    
     def _crear_dialogo(self):
-        """Crea el diálogo."""
-        self.entry = ft.TextField(
+        """Crea el diálogo para crear archivo."""
+        # Campo de entrada para el nombre
+        self.campo_nombre = ft.TextField(
             label="Nombre del archivo",
-            hint_text="Ej: mayo_2025",
+            hint_text="Ej: audiencias_enero",
             width=300,
+            border_radius=10,
+            filled=True,
+            bgcolor="#FFFFFF",
+            border_color="#E5E7EB",
+            focused_border_color="#1E40AF",
+            text_style=ft.TextStyle(size=14, color="#1F2937"),
+            label_style=ft.TextStyle(size=13, color="#6B7280"),
+            content_padding=ft.Padding(12, 10, 12, 10),
             autofocus=True,
         )
-
-        self.dlg = ft.AlertDialog(
+        
+        # Botones
+        btn_crear = ft.ElevatedButton(
+            text="Crear",
+            on_click=self._on_crear,
+            style=ft.ButtonStyle(
+                bgcolor="#1E40AF",
+                color="#FFFFFF",
+                elevation=2,
+                shape=ft.RoundedRectangleBorder(radius=8),
+                padding=ft.Padding(20, 10, 20, 10),
+            ),
+        )
+        
+        btn_cancelar = ft.TextButton(
+            text="Cancelar",
+            on_click=self._on_cancelar,
+            style=ft.ButtonStyle(
+                color="#6B7280",
+                padding=ft.Padding(20, 10, 20, 10),
+            ),
+        )
+        
+        # Contenido del diálogo
+        self.dialog = ft.AlertDialog(
             modal=True,
-            title=ft.Text("📄 Crear Nuevo Archivo"),
-            content=ft.Column(
-                [ft.Text("Ingrese el nombre para la nueva copia:"), self.entry],
-                tight=True,
+            title=ft.Text("Crear Nuevo Archivo", size=18, weight=ft.FontWeight.BOLD),
+            content=ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text(
+                            "Ingrese el nombre para el nuevo archivo:",
+                            size=14,
+                            color="#6B7280",
+                        ),
+                        ft.Container(height=10),
+                        self.campo_nombre,
+                    ],
+                    tight=True,
+                    spacing=5,
+                ),
+                width=350,
+                height=120,
             ),
             actions=[
-                ft.TextButton("Cancelar", on_click=self._cancelar),
-                ft.TextButton("Crear", on_click=self._crear),
+                btn_cancelar,
+                btn_crear,
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-
-        self.page.dialog = self.dlg
-        self.dlg.open = True
+        
+        # Mostrar el diálogo
+        self.page.overlay.append(self.dialog)
+        self.dialog.open = True
         self.page.update()
-
-    def _crear(self, e):
-        """Crea el archivo."""
-        nombre = self.entry.value.strip()
-        if nombre:
-            if not nombre.lower().endswith(".xlsx"):
-                nombre += ".xlsx"
-            self.callback(nombre)
-        self._cerrar()
-
-    def _cancelar(self, e):
-        """Cancela la creación."""
-        self._cerrar()
-
-    def _cerrar(self):
-        """Cierra el diálogo."""
-        self.dlg.open = False
+    
+    def _on_crear(self, e):
+        """Maneja el click en crear."""
+        nombre = self.campo_nombre.value.strip() if self.campo_nombre.value else ""
+        
+        if not nombre:
+            # Mostrar error si no hay nombre
+            self.campo_nombre.error_text = "El nombre es obligatorio"
+            self.page.update()
+            return
+        
+        # Cerrar diálogo y ejecutar callback
+        self.dialog.open = False
+        self.page.update()
+        self.callback(nombre)
+    
+    def _on_cancelar(self, e):
+        """Maneja el click en cancelar."""
+        self.dialog.open = False
         self.page.update()
 
 
 class VentanaSeleccionArchivo:
-    """Ventana para seleccionar un archivo."""
-
-    def __init__(self, page: ft.Page, titulo: str, archivos: list, callback):
+    """Diálogo para seleccionar un archivo de una lista con Flet."""
+    
+    def __init__(self, page: ft.Page, titulo: str, archivos, callback):
         self.page = page
         self.titulo = titulo
         self.archivos = archivos
         self.callback = callback
-        self.dlg = None
-        self._crear_ventana()
-
-    def _crear_ventana(self):
-        """Crea la ventana de selección."""
-        items = []
+        self.dialog = None
+        self._crear_dialogo()
+    
+    def _crear_dialogo(self):
+        """Crea el diálogo de selección."""
+        # Lista de archivos como botones
+        lista_controles = []
+        
         for archivo in self.archivos:
-            items.append(
-                ft.ListTile(
-                    leading=ft.Icon(ft.icons.DESCRIPTION),
-                    title=ft.Text(archivo),
-                    on_click=lambda e, archivo=archivo: self._seleccionar(archivo),
-                )
+            btn_archivo = ft.Container(
+                content=ft.Row(
+                    controls=[
+                        ft.Icon(ft.Icons.DESCRIPTION, size=20, color="#1E40AF"),
+                        ft.Text(archivo, size=14, color="#1F2937", expand=True),
+                        ft.Icon(ft.Icons.ARROW_FORWARD_IOS, size=16, color="#9CA3AF"),
+                    ],
+                    spacing=10,
+                    alignment=ft.MainAxisAlignment.START,
+                ),
+                bgcolor="#F9FAFB",
+                border=ft.border.all(1, "#E5E7EB"),
+                border_radius=8,
+                padding=ft.Padding(15, 12, 15, 12),
+                on_click=lambda e, arch=archivo: self._on_seleccionar(arch),
+                ink=True,
             )
-
-        self.dlg = ft.AlertDialog(
-            modal=True,
-            title=ft.Text(f"📁 {self.titulo}"),
-            content=ft.Column(controls=items, height=300, scroll=ft.ScrollMode.AUTO),
-            actions=[
-                ft.TextButton("Cancelar", on_click=self._cancelar),
-            ],
+            lista_controles.append(btn_archivo)
+        
+        # Botón cancelar
+        btn_cancelar = ft.TextButton(
+            text="Cancelar",
+            on_click=self._on_cancelar,
+            style=ft.ButtonStyle(
+                color="#6B7280",
+                padding=ft.Padding(20, 10, 20, 10),
+            ),
         )
-
-        self.page.dialog = self.dlg
-        self.dlg.open = True
+        
+        # Contenido scrollable
+        contenido_scroll = ft.Column(
+            controls=lista_controles,
+            spacing=8,
+            scroll=ft.ScrollMode.AUTO,
+        )
+        
+        # Contenedor con altura fija para scroll
+        contenedor_lista = ft.Container(
+            content=contenido_scroll,
+            height=min(300, len(self.archivos) * 60 + 50),  # Altura dinámica
+            width=400,
+        )
+        
+        # Diálogo principal
+        self.dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(self.titulo, size=18, weight=ft.FontWeight.BOLD),
+            content=ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text(
+                            f"Seleccione uno de los {len(self.archivos)} archivos disponibles:",
+                            size=14,
+                            color="#6B7280",
+                        ),
+                        ft.Container(height=15),
+                        contenedor_lista,
+                    ],
+                    tight=True,
+                    spacing=5,
+                ),
+                width=450,
+            ),
+            actions=[btn_cancelar],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        # Mostrar el diálogo
+        self.page.overlay.append(self.dialog)
+        self.dialog.open = True
         self.page.update()
-
-    def _seleccionar(self, archivo):
-        """Selecciona un archivo."""
+    
+    def _on_seleccionar(self, archivo: str):
+        """Maneja la selección de un archivo."""
+        self.dialog.open = False
+        self.page.update()
         self.callback(archivo)
-        self._cerrar()
-
-    def _cancelar(self, e):
-        """Cancela la selección."""
-        self._cerrar()
-
-    def _cerrar(self):
-        """Cierra el diálogo."""
-        self.dlg.open = False
+    
+    def _on_cancelar(self, e):
+        """Maneja el click en cancelar."""
+        self.dialog.open = False
         self.page.update()
 
 
 class VentanaSeleccionRegistro:
-    """Ventana para seleccionar un registro para editar."""
+    """Ventana para seleccionar un registro para editar con Flet."""
 
-    def __init__(self, page: ft.Page, registros: list, callback):
+    def __init__(self, page: ft.Page, registros, callback):
         self.page = page
         self.registros = registros
         self.callback = callback
-        self.dlg = None
-        self._crear_ventana()
-
-    def _crear_ventana(self):
-        """Crea la ventana de selección."""
-        items = []
+        self.dialog = None
+        self._crear_dialogo()
+    
+    def _crear_dialogo(self):
+        """Crea el diálogo de selección de registro."""
+        # Lista de registros como botones
+        lista_controles = []
+        
         for i, (fila_num, datos) in enumerate(self.registros):
-            info = f"#{i+1} - {datos[1] or 'Sin radicado'} - {datos[2] or 'Sin tipo'} - {datos[3] or 'Sin fecha'}"
-            items.append(
-                ft.ListTile(
-                    leading=ft.Icon(ft.icons.EDIT),
-                    title=ft.Text(info, size=12),
-                    on_click=lambda e, fn=fila_num, d=datos: self._seleccionar(fn, d),
-                )
+            # Información del registro
+            info_text = f"#{datos[0] or i+1} - {datos[1]} - {datos[2]} - {datos[3]} - {datos[4]}"
+            
+            btn_registro = ft.Container(
+                content=ft.Row(
+                    controls=[
+                        ft.Icon(ft.Icons.EDIT_DOCUMENT, size=20, color="#059669"),
+                        ft.Text(info_text, size=13, color="#1F2937", expand=True),
+                        ft.ElevatedButton(
+                            text="Editar",
+                            on_click=lambda e, fn=fila_num, d=datos: self._on_editar_item(fn, d),
+                            style=ft.ButtonStyle(
+                                bgcolor="#059669",
+                                color="#FFFFFF",
+                                shape=ft.RoundedRectangleBorder(radius=6),
+                                padding=ft.Padding(12, 8, 12, 8),
+                                text_style=ft.TextStyle(size=12),
+                            ),
+                        ),
+                    ],
+                    spacing=10,
+                    alignment=ft.MainAxisAlignment.START,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                bgcolor="#F9FAFB",
+                border=ft.border.all(1, "#E5E7EB"),
+                border_radius=8,
+                padding=ft.Padding(15, 12, 15, 12),
             )
-
-        self.dlg = ft.AlertDialog(
-            modal=True,
-            title=ft.Text("✏️ Seleccionar Registro para Editar"),
-            content=ft.Column(controls=items, height=400, scroll=ft.ScrollMode.AUTO),
-            actions=[
-                ft.TextButton("Cancelar", on_click=self._cancelar),
-            ],
+            lista_controles.append(btn_registro)
+        
+        # Botón cancelar
+        btn_cancelar = ft.TextButton(
+            text="Cancelar",
+            on_click=self._on_cancelar,
+            style=ft.ButtonStyle(
+                color="#6B7280",
+                padding=ft.Padding(20, 10, 20, 10),
+            ),
         )
-
-        self.page.dialog = self.dlg
-        self.dlg.open = True
+        
+        # Contenido scrollable
+        contenido_scroll = ft.Column(
+            controls=lista_controles,
+            spacing=8,
+            scroll=ft.ScrollMode.AUTO,
+        )
+        
+        # Contenedor con altura fija para scroll
+        contenedor_lista = ft.Container(
+            content=contenido_scroll,
+            height=min(400, len(self.registros) * 70 + 50),  # Altura dinámica
+            width=600,
+        )
+        
+        # Diálogo principal
+        self.dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Seleccionar Registro para Editar", size=18, weight=ft.FontWeight.BOLD),
+            content=ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text(
+                            f"Seleccione uno de los {len(self.registros)} registros disponibles para editar:",
+                            size=14,
+                            color="#6B7280",
+                        ),
+                        ft.Container(height=15),
+                        contenedor_lista,
+                    ],
+                    tight=True,
+                    spacing=5,
+                ),
+                width=650,
+            ),
+            actions=[btn_cancelar],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        # Mostrar el diálogo
+        self.page.overlay.append(self.dialog)
+        self.dialog.open = True
         self.page.update()
-
-    def _seleccionar(self, fila_num, datos):
-        """Selecciona un registro."""
-        self.callback(fila_num, datos)
-        self._cerrar()
-
-    def _cancelar(self, e):
+    
+    def _on_editar_item(self, fila_num, datos_completos):
+        """Maneja la selección de un registro para editar."""
+        self.dialog.open = False
+        self.page.update()
+        self.callback(fila_num, datos_completos)
+    
+    def _on_cancelar(self, e):
         """Cancela la selección."""
-        self._cerrar()
-
-    def _cerrar(self):
-        """Cierra el diálogo."""
-        self.dlg.open = False
+        self.dialog.open = False
         self.page.update()
 
 
 class DialogoConfirmacion:
-    """Diálogo de confirmación."""
-
+    """Diálogo de confirmación con Flet."""
+    
     @staticmethod
     def confirmar(page: ft.Page, titulo: str, mensaje: str, callback_si):
         """Muestra un diálogo de confirmación."""
-
+        
         def confirmar_accion(e):
             dlg.open = False
             page.update()
             callback_si()
-
+        
         def cancelar_accion(e):
             dlg.open = False
             page.update()
-
+        
         dlg = ft.AlertDialog(
             modal=True,
-            title=ft.Text(titulo),
-            content=ft.Text(mensaje),
+            title=ft.Text(titulo, size=18, weight=ft.FontWeight.BOLD),
+            content=ft.Text(mensaje, size=14, color="#374151"),
             actions=[
-                ft.TextButton("No", on_click=cancelar_accion),
-                ft.TextButton("Sí", on_click=confirmar_accion),
+                ft.TextButton(
+                    "Cancelar",
+                    on_click=cancelar_accion,
+                    style=ft.ButtonStyle(
+                        color="#6B7280",
+                        padding=ft.Padding(20, 10, 20, 10),
+                    ),
+                ),
+                ft.ElevatedButton(
+                    "Confirmar",
+                    on_click=confirmar_accion,
+                    style=ft.ButtonStyle(
+                        bgcolor="#DC2626",
+                        color="#FFFFFF",
+                        elevation=2,
+                        shape=ft.RoundedRectangleBorder(radius=8),
+                        padding=ft.Padding(20, 10, 20, 10),
+                    ),
+                ),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-
-        page.dialog = dlg
+        
+        page.overlay.append(dlg)
         dlg.open = True
         page.update()
 
 
 class VentanaPrincipal:
-    """Ventana principal de la aplicación con Flet - Interfaz Moderna."""
+    """Ventana principal de la aplicación con Flet - Versión Simple."""
 
     def __init__(self, page: ft.Page):
         self.page = page
@@ -252,299 +428,665 @@ class VentanaPrincipal:
     def _configurar_pagina(self):
         """Configura las propiedades de la página."""
         self.page.title = "🏛️ Gestor de Audiencias Judiciales"
-        self.page.theme_mode = ft.ThemeMode.LIGHT
-        self.page.padding = 20
-        self.page.window_width = 1000
-        self.page.window_height = 800
-        self.page.window_min_width = 900
-        self.page.window_min_height = 700
-        self.page.window_center()
+        self.page.padding = 0  # Sin padding para usar toda la pantalla
+        self.page.scroll = ft.ScrollMode.AUTO
+        self.page.bgcolor = "#F8FAFC"  # Gris muy claro como fondo
+        
+        # Configurar ventana
+        try:
+            if hasattr(self.page, 'window'):
+                self.page.window.width = 1400
+                self.page.window.height = 900
+                self.page.window.min_width = 1000
+                self.page.window.min_height = 700
+        except:
+            pass
 
-        # Tema personalizado elegante
+        # Forzar modo claro y tema personalizado con colores profesionales
+        self.page.theme_mode = ft.ThemeMode.LIGHT
         self.page.theme = ft.Theme(
-            color_scheme_seed=ft.colors.BLUE,
-            visual_density=ft.ThemeVisualDensity.COMFORTABLE,
+            color_scheme=ft.ColorScheme(
+                primary="#1E40AF",  # Azul profesional
+                on_primary="#FFFFFF",
+                surface="#FFFFFF",
+                on_surface="#1F2937",  # Gris oscuro para texto
+            )
         )
 
     def _crear_interfaz(self):
-        """Crea toda la interfaz de usuario."""
+        """Crea toda la interfaz de usuario con diseño profesional."""
 
-        # === HEADER ===
-        header = self._crear_header()
-
-        # === FORMULARIO PRINCIPAL ===
-        formulario = self._crear_formulario()
-
-        # === BOTONES DE ACCIÓN ===
-        botones_accion = self._crear_botones_accion()
-
-        # === GESTIÓN DE ARCHIVOS ===
-        gestion_archivos = self._crear_gestion_archivos()
-
-        # === INFO DE ESTADO ===
-        info_estado = self._crear_info_estado()
-
-        # === FOOTER ===
-        footer = self._crear_footer()
-
-        # Agregar todo a la página en un ListView scrollable
-        contenido = ft.ListView(
-            controls=[
-                header,
-                formulario,
-                botones_accion,
-                gestion_archivos,
-                info_estado,
-                footer,
-            ],
+        # Contenedor principal con padding
+        contenido_principal = ft.Container(
+            content=ft.Column(
+                controls=[
+                    self._crear_header(),
+                    ft.Container(height=15),  # Espaciado reducido
+                    self._crear_formulario(),  # Ahora incluye los botones integrados
+                    ft.Container(height=15),
+                    self._crear_gestion_archivos(),
+                    ft.Container(height=20),  # Espaciado final
+                ],
+                expand=True,
+                spacing=0,
+                scroll=ft.ScrollMode.HIDDEN,  # Sin scroll
+            ),
+            padding=ft.padding.all(25),  # Padding reducido
+            bgcolor="#F8FAFC",  # Fondo gris claro
             expand=True,
-            spacing=20,
-            padding=ft.padding.symmetric(vertical=10),
         )
 
-        self.page.add(contenido)
+        # Agregar a la página
+        self.page.add(contenido_principal)
 
     def _crear_header(self):
-        """Crea el header profesional."""
+        """Crea el header profesional moderno."""
         self.contador_registros = ft.Text(
-            "Registros: 0", size=14, weight=ft.FontWeight.BOLD
+            "Registros: 0", 
+            size=14, 
+            weight=ft.FontWeight.W_600,
+            color="#1F2937"
+        )
+
+        self.archivo_actual_text = ft.Text(
+            "Ningún archivo seleccionado",
+            size=14,
+            weight=ft.FontWeight.W_500,
+            color="#6B7280"
         )
 
         return ft.Container(
             content=ft.Row(
                 controls=[
-                    ft.Text(
-                        "⚖️ GESTOR DE AUDIENCIAS JUDICIALES",
-                        size=28,
-                        weight=ft.FontWeight.BOLD,
-                        color=ft.colors.BLUE_900,
+                    # Logo y título principal
+                    ft.Row(
+                        controls=[
+                            ft.Container(
+                                content=ft.Icon(
+                                    ft.Icons.GAVEL, 
+                                    size=40, 
+                                    color="#FFFFFF"
+                                ),
+                                width=60,
+                                height=60,
+                                bgcolor="#1E40AF",  # Azul profesional
+                                border_radius=15,
+                                alignment=ft.alignment.center,
+                            ),
+                            ft.Column(
+                                controls=[
+                                    ft.Text(
+                                        "GESTOR DE AUDIENCIAS", 
+                                        size=24, 
+                                        weight=ft.FontWeight.BOLD, 
+                                        color="#1F2937"
+                                    ),
+                                    ft.Text(
+                                        "Sistema Judicial Profesional", 
+                                        size=14, 
+                                        color="#6B7280",
+                                        italic=True
+                                    ),
+                                ],
+                                spacing=2,
+                                alignment=ft.MainAxisAlignment.CENTER,
+                            ),
+                        ],
+                        spacing=15,
+                        alignment=ft.MainAxisAlignment.START,
                     ),
+                    
+                    # Información del archivo (centrado)
                     ft.Container(
                         content=ft.Row(
                             controls=[
-                                ft.Icon(ft.icons.ANALYTICS, size=20),
+                                ft.Icon(ft.Icons.FOLDER_OUTLINED, size=18, color="#1E40AF"),
+                                self.archivo_actual_text,
+                            ],
+                            spacing=8,
+                            alignment=ft.MainAxisAlignment.CENTER,
+                        ),
+                        bgcolor="#F3F4F6",  # Gris muy claro
+                        border_radius=20,
+                        padding=ft.padding.symmetric(horizontal=20, vertical=12),
+                        border=ft.border.all(1, "#D1D5DB"),
+                    ),
+                    
+                    # Contador de registros (separado)
+                    ft.Container(
+                        content=ft.Row(
+                            controls=[
+                                ft.Icon(ft.Icons.ANALYTICS_OUTLINED, size=18, color="#1E40AF"),
                                 self.contador_registros,
                             ],
-                            alignment=ft.MainAxisAlignment.CENTER,
                             spacing=8,
+                            alignment=ft.MainAxisAlignment.CENTER,
                         ),
-                        bgcolor=ft.colors.BLUE_50,
-                        border_radius=10,
-                        padding=ft.padding.symmetric(horizontal=15, vertical=10),
+                        bgcolor="#EFF6FF",  # Azul muy claro
+                        border_radius=20,
+                        padding=ft.padding.symmetric(horizontal=20, vertical=12),
+                        border=ft.border.all(1, "#DBEAFE"),
                     ),
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            bgcolor=ft.colors.WHITE,
-            border_radius=15,
-            padding=25,
+            bgcolor="#FFFFFF",
+            border_radius=20,
+            padding=30,
             shadow=ft.BoxShadow(
-                spread_radius=1,
+                spread_radius=0,
                 blur_radius=10,
-                color=ft.colors.with_opacity(0.1, ft.colors.BLACK),
+                color="#00000010",
                 offset=ft.Offset(0, 2),
             ),
+            border=ft.border.all(1, "#E5E7EB"),
         )
 
     def _crear_formulario(self):
-        """Crea el formulario principal."""
-
-        # Título del formulario
-        titulo_form = ft.Text(
-            "📝 INFORMACIÓN DE LA AUDIENCIA",
-            size=20,
-            weight=ft.FontWeight.BOLD,
-            color=ft.colors.BLUE_800,
+        """Crea el formulario principal con diseño de dos columnas sin scroll."""
+        # Título principal del formulario (compacto)
+        titulo_principal = ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Icon(ft.Icons.EDIT_NOTE_OUTLINED, size=24, color="#1E3A8A"),
+                    ft.Text(
+                        "INFORMACIÓN DE LA AUDIENCIA", 
+                        size=18, 
+                        weight=ft.FontWeight.BOLD, 
+                        color="#1E3A8A"
+                    ),
+                ],
+                spacing=10,
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            padding=ft.padding.symmetric(vertical=10),
         )
 
-        # Campos del formulario
-        campos = [
-            titulo_form,
-            ft.Divider(height=20, color=ft.colors.BLUE_200),
-            self._crear_campo_radicado(),
-            self._crear_campo_tipo_audiencia(),
-            self._crear_campo_fecha(),
-            self._crear_campo_hora(),
-            self._crear_campo_juzgado(),
-            self._crear_campo_realizada(),
-            self._crear_campo_motivos(),
-            self._crear_campo_observaciones(),
-        ]
+        # === COLUMNA IZQUIERDA ===
+        columna_izquierda = ft.Column(
+            controls=[
+                # SECCIÓN 1: IDENTIFICACIÓN DEL PROCESO
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            # Encabezado de sección (compacto)
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(ft.Icons.FOLDER_OUTLINED, size=18, color="#374151"),
+                                    ft.Text(
+                                        "IDENTIFICACIÓN DEL PROCESO",
+                                        size=14,
+                                        weight=ft.FontWeight.BOLD,
+                                        color="#374151"
+                                    ),
+                                ],
+                                spacing=8,
+                                alignment=ft.MainAxisAlignment.START,
+                            ),
+                            ft.Container(height=10),  # Espaciado reducido
+                            
+                            # Campos: Radicado y Juzgado (uno debajo del otro)
+                            self._crear_campo_radicado(),
+                            ft.Container(height=8),
+                            self._crear_campo_juzgado(),
+                        ],
+                        spacing=3,
+                        alignment=ft.MainAxisAlignment.START,
+                    ),
+                    bgcolor="#F9FAFB",
+                    border_radius=10,
+                    padding=ft.padding.all(15),
+                    border=ft.border.all(1, "#D1D5DB"),
+                ),
+                
+                ft.Container(height=15),  # Espaciado entre secciones
+                
+                # SECCIÓN 2: CONFIGURACIÓN DE LA AUDIENCIA
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            # Encabezado de sección (compacto)
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(ft.Icons.SETTINGS_OUTLINED, size=18, color="#374151"),
+                                    ft.Text(
+                                        "CONFIGURACIÓN DE LA AUDIENCIA",
+                                        size=14,
+                                        weight=ft.FontWeight.BOLD,
+                                        color="#374151"
+                                    ),
+                                ],
+                                spacing=8,
+                                alignment=ft.MainAxisAlignment.START,
+                            ),
+                            ft.Container(height=10),
+                            
+                            # Campos: Tipo de audiencia y ¿Se realizó?
+                            self._crear_campo_tipo_audiencia(),
+                            ft.Container(height=8),
+                            self._crear_campo_realizada(),
+                        ],
+                        spacing=3,
+                        alignment=ft.MainAxisAlignment.START,
+                    ),
+                    bgcolor="#F9FAFB",
+                    border_radius=10,
+                    padding=ft.padding.all(15),
+                    border=ft.border.all(1, "#D1D5DB"),
+                ),
+            ],
+            expand=True,
+            spacing=0,
+            alignment=ft.MainAxisAlignment.START,  # Alineación desde arriba
+        )
 
+        # === COLUMNA DERECHA ===
+        columna_derecha = ft.Column(
+            controls=[
+                # SECCIÓN 3: PROGRAMACIÓN (FECHA Y HORA)
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            # Encabezado de sección (compacto)
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(ft.Icons.SCHEDULE_OUTLINED, size=18, color="#374151"),
+                                    ft.Text(
+                                        "PROGRAMACIÓN",
+                                        size=14,
+                                        weight=ft.FontWeight.BOLD,
+                                        color="#374151"
+                                    ),
+                                ],
+                                spacing=8,
+                                alignment=ft.MainAxisAlignment.START,
+                            ),
+                            ft.Container(height=10),
+                            
+                            # Campos: Fecha y Hora (uno debajo del otro)
+                            self._crear_campo_fecha(),
+                            ft.Container(height=8),
+                            self._crear_campo_hora(),
+                        ],
+                        spacing=3,
+                        alignment=ft.MainAxisAlignment.START,
+                    ),
+                    bgcolor="#F9FAFB",
+                    border=ft.border.all(1, "#D1D5DB"),
+                    border_radius=10,
+                    padding=15,
+                ),
+                
+                ft.Container(height=15),
+                
+                # SECCIÓN 4: MOTIVOS DE NO REALIZACIÓN
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            # Encabezado de sección (compacto)
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(ft.Icons.ERROR_OUTLINE, size=18, color="#DC2626"),
+                                    ft.Text(
+                                        "MOTIVOS DE NO REALIZACIÓN",
+                                        size=14,
+                                        weight=ft.FontWeight.BOLD,
+                                        color="#DC2626"
+                                    ),
+                                ],
+                                spacing=8,
+                                alignment=ft.MainAxisAlignment.START,
+                            ),
+                            ft.Container(height=10),
+                            
+                            # Campo de motivos (compacto)
+                            self._crear_campo_motivos(),
+                        ],
+                        spacing=3,
+                        alignment=ft.MainAxisAlignment.START,
+                    ),
+                    bgcolor="#FEFEFE",
+                    border_radius=12,
+                    padding=ft.padding.all(18),
+                    border=ft.border.all(1, "#FECACA"),
+                    shadow=ft.BoxShadow(
+                        spread_radius=0,
+                        blur_radius=8,
+                        color="#DC262620",
+                        offset=ft.Offset(0, 2),
+                    ),
+                ),
+            ],
+            expand=True,
+            spacing=0,
+            alignment=ft.MainAxisAlignment.START,  # Alineación desde arriba
+        )
+
+        # === ROW PRINCIPAL CON LAS DOS COLUMNAS ===
+        row_principal = ft.Row(
+            controls=[
+                columna_izquierda,
+                ft.Container(width=20),  # Espaciado entre columnas
+                columna_derecha,
+            ],
+            expand=True,
+            spacing=0,
+            alignment=ft.MainAxisAlignment.START,
+            vertical_alignment=ft.CrossAxisAlignment.START,  # Alineación vertical desde arriba
+        )
+
+        # === SECCIÓN DE OBSERVACIONES (ANCHO COMPLETO) ===
+        seccion_observaciones = ft.Row(
+            controls=[
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            # Encabezado de sección (compacto)
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(ft.Icons.NOTES_OUTLINED, size=18, color="#374151"),
+                                    ft.Text(
+                                        "OBSERVACIONES ADICIONALES",
+                                        size=14,
+                                        weight=ft.FontWeight.BOLD,
+                                        color="#374151"
+                                    ),
+                                ],
+                                spacing=8,
+                            ),
+                            ft.Container(height=8),
+                            
+                            # Campo de observaciones (reducido a 2 líneas)
+                            self._crear_campo_observaciones_compacto(),
+                        ],
+                        spacing=3,
+                    ),
+                    bgcolor="#F9FAFB",
+                    border=ft.border.all(1, "#D1D5DB"),
+                    border_radius=10,
+                    padding=15,
+                    expand=1,
+                ),
+            ],
+        )
+
+        # === BOTONES DE ACCIÓN (ANCHO COMPLETO) ===
+        seccion_botones = ft.Row(
+            controls=[
+                self._crear_botones_accion_compactos(),
+            ],
+            expand=True,
+        )
+
+        # === CONTENEDOR PRINCIPAL SIN SCROLL ===
         return ft.Container(
-            content=ft.Column(controls=campos, spacing=15, scroll=ft.ScrollMode.AUTO),
-            bgcolor=ft.colors.WHITE,
-            border_radius=15,
-            padding=30,
-            shadow=ft.BoxShadow(
-                spread_radius=1,
-                blur_radius=10,
-                color=ft.colors.with_opacity(0.1, ft.colors.BLACK),
-                offset=ft.Offset(0, 2),
+            content=ft.Column(
+                controls=[
+                    titulo_principal,
+                    ft.Divider(height=1, color="#E5E7EB"),
+                    ft.Container(height=15),  # Espaciado reducido
+                    
+                    row_principal,  # Las dos columnas principales
+                    ft.Container(height=15),
+                    
+                    seccion_observaciones,  # Observaciones ancho completo
+                    ft.Container(height=15),
+                    
+                    seccion_botones,  # Botones ancho completo
+                ],
+                spacing=0,
+                expand=True,
+                scroll=ft.ScrollMode.HIDDEN,  # Sin scroll
             ),
+            bgcolor="#F8FAFC", 
+            border_radius=16,
+            padding=ft.padding.all(20),  # Padding reducido
+            expand=True,
         )
 
     def _crear_campo_radicado(self):
-        """Campo de radicado."""
+        """Campo de radicado con diseño mejorado y colores claros."""
         self.entrada_radicado = ft.TextField(
-            label="📋 Radicado del proceso",
-            border_radius=10,
+            label="Número de radicado",
+            hint_text="Ej: 11001-60-00000-2024-00000-00",
+            border_radius=12,
             filled=True,
-            bgcolor=ft.colors.BLUE_50,
-            prefix_icon=ft.icons.FOLDER_OUTLINED,
+            bgcolor="#FFFFFF",  # Fondo blanco completamente claro
+            border_color="#E5E7EB",
+            focused_border_color="#1E40AF",
+            prefix_icon=ft.Icons.FOLDER_OUTLINED,
+            text_style=ft.TextStyle(size=14, color="#1F2937"),
+            label_style=ft.TextStyle(size=13, color="#6B7280"),
+            content_padding=ft.Padding(12, 10, 12, 10),
         )
         return self.entrada_radicado
 
     def _crear_campo_tipo_audiencia(self):
-        """Campo de tipo de audiencia."""
+        """Campo de tipo de audiencia con diseño mejorado y colores claros."""
         self.combo_tipo = ft.Dropdown(
-            label="⚖️ Tipo de audiencia",
+            label="Tipo de audiencia",
+            hint_text="Seleccione el tipo de audiencia...",
             options=[ft.dropdown.Option(tipo) for tipo in self.tipos_audiencia],
-            border_radius=10,
-            filled=True,
-            bgcolor=ft.colors.BLUE_50,
             on_change=self._on_tipo_change,
+            border_radius=12,
+            filled=True,
+            bgcolor="#FFFFFF",  # Fondo blanco completamente claro
+            border_color="#E5E7EB",
+            focused_border_color="#1E40AF",
+            text_style=ft.TextStyle(size=14, color="#1F2937"),
+            label_style=ft.TextStyle(size=13, color="#6B7280"),
+            content_padding=ft.Padding(12, 10, 12, 10),
         )
 
         self.entrada_tipo_otra = ft.TextField(
-            label="Especificar otro tipo...",
-            border_radius=10,
+            label="Especificar otro tipo",
+            hint_text="Escriba el tipo de audiencia...",
+            border_radius=12,
             filled=True,
-            bgcolor=ft.colors.ORANGE_50,
+            bgcolor="#FFFBEB",  # Amarillo muy suave para diferenciarlo
+            border_color="#F59E0B",
+            focused_border_color="#D97706",
+            text_style=ft.TextStyle(size=14, color="#1F2937"),
+            label_style=ft.TextStyle(size=13, color="#92400E"),
+            content_padding=ft.Padding(12, 10, 12, 10),
             visible=False,
-        )
-
-        return ft.Column(controls=[self.combo_tipo, self.entrada_tipo_otra], spacing=10)
-
-    def _crear_campo_fecha(self):
-        """Campo de fecha."""
-        dias = [f"{i:02d}" for i in range(1, 32)]
-        meses = [f"{i:02d}" for i in range(1, 13)]
-        anios = [str(a) for a in range(datetime.now().year, datetime.now().year + 6)]
-
-        self.combo_dia = ft.Dropdown(
-            label="Día",
-            options=[ft.dropdown.Option(dia) for dia in dias],
-            width=100,
-            border_radius=10,
-            filled=True,
-            bgcolor=ft.colors.BLUE_50,
-        )
-
-        self.combo_mes = ft.Dropdown(
-            label="Mes",
-            options=[ft.dropdown.Option(mes) for mes in meses],
-            width=100,
-            border_radius=10,
-            filled=True,
-            bgcolor=ft.colors.BLUE_50,
-        )
-
-        self.combo_anio = ft.Dropdown(
-            label="Año",
-            options=[ft.dropdown.Option(anio) for anio in anios],
-            width=120,
-            border_radius=10,
-            filled=True,
-            bgcolor=ft.colors.BLUE_50,
         )
 
         return ft.Column(
             controls=[
-                ft.Text("📅 Fecha (DD/MM/AAAA)", size=16, weight=ft.FontWeight.BOLD),
-                ft.Row(
-                    controls=[self.combo_dia, self.combo_mes, self.combo_anio],
-                    spacing=15,
-                ),
+                self.combo_tipo,
+                self.entrada_tipo_otra,
             ],
             spacing=10,
         )
 
+    def _crear_campo_fecha(self):
+        """Campo de fecha con DatePicker unificado y formateo en tiempo real."""
+        # DatePicker principal
+        self.date_picker = ft.DatePicker(
+            first_date=datetime(datetime.now().year - 1, 1, 1),
+            last_date=datetime(datetime.now().year + 5, 12, 31),
+            on_change=self._on_date_picker_change,
+        )
+        
+        # Campo de texto con formateo automático en tiempo real
+        self.entrada_fecha = ft.TextField(
+            label="Fecha (DD/MM/AAAA)",
+            hint_text="Ej: 22072025 → 22/07/2025",
+            width=200,
+            max_length=10,  # DD/MM/AAAA = 10 caracteres
+            border_radius=10,
+            filled=True,
+            bgcolor="#FFFFFF",
+            border_color="#E5E7EB",
+            focused_border_color="#1E40AF",
+            text_style=ft.TextStyle(size=13, color="#1F2937"),
+            label_style=ft.TextStyle(size=12, color="#6B7280"),
+            content_padding=ft.Padding(12, 10, 12, 10),
+            on_change=self._on_fecha_change_tiempo_real,
+        )
+        
+        # Botón del calendario alineado junto al campo
+        btn_calendario = ft.IconButton(
+            icon=ft.Icons.CALENDAR_TODAY_OUTLINED,
+            tooltip="Abrir calendario",
+            on_click=self._abrir_date_picker,
+            icon_color="#1E40AF",
+            icon_size=20,
+            style=ft.ButtonStyle(
+                bgcolor="#F8FAFC",
+                shape=ft.RoundedRectangleBorder(radius=8),
+                padding=ft.Padding(8, 8, 8, 8),
+            ),
+        )
+        
+        # Row para alinear campo y botón lado a lado
+        campo_fecha_row = ft.Row(
+            controls=[
+                self.entrada_fecha,
+                btn_calendario,
+            ],
+            spacing=8,
+            alignment=ft.MainAxisAlignment.START,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+        
+        # Agregar el DatePicker a la página
+        self.page.overlay.append(self.date_picker)
+        
+        # Campos virtuales para compatibilidad con lógica existente
+        self.combo_dia = ft.Dropdown(
+            options=[ft.dropdown.Option(f"{i:02d}") for i in range(1, 32)],
+            width=80,
+            value=None,
+        )
+        self.combo_mes = ft.Dropdown(
+            options=[ft.dropdown.Option(f"{i:02d}") for i in range(1, 13)],
+            width=80,
+            value=None,
+        )
+        self.combo_anio = ft.Dropdown(
+            options=[ft.dropdown.Option(str(i)) for i in range(2020, 2031)],
+            width=100,
+            value=None,
+        )
+
+        return campo_fecha_row
+
     def _crear_campo_hora(self):
-        """Campo de hora."""
+        """Campo de hora con selección automática de texto al hacer clic."""
+        # Estilo claro y consistente para campos de hora
+        estilo_hora = {
+            "border_radius": 10,
+            "filled": True,
+            "bgcolor": "#FFFFFF",
+            "border_color": "#E5E7EB",
+            "focused_border_color": "#1E40AF",
+            "text_style": ft.TextStyle(size=13, color="#1F2937"),
+            "label_style": ft.TextStyle(size=12, color="#6B7280"),
+            "text_align": ft.TextAlign.CENTER,
+            "content_padding": ft.Padding(12, 10, 12, 10),
+        }
+
+        def _seleccionar_texto_hora(e):
+            """Selecciona todo el contenido del campo hora al hacer clic."""
+            if e.control.value:
+                e.control.selection = ft.TextSelection(0, len(e.control.value))
+                e.control.update()
+
+        def _seleccionar_texto_minuto(e):
+            """Selecciona todo el contenido del campo minuto al hacer clic."""
+            if e.control.value:
+                e.control.selection = ft.TextSelection(0, len(e.control.value))
+                e.control.update()
+
         self.entrada_hora = ft.TextField(
             label="Hora",
             hint_text="00",
-            width=80,
-            border_radius=10,
-            filled=True,
-            bgcolor=ft.colors.BLUE_50,
-            input_filter=ft.NumbersOnlyInputFilter(),
+            width=85,
             max_length=2,
+            on_click=_seleccionar_texto_hora,
+            **estilo_hora
         )
 
         self.entrada_minuto = ft.TextField(
             label="Min",
             hint_text="00",
-            width=80,
-            border_radius=10,
-            filled=True,
-            bgcolor=ft.colors.BLUE_50,
-            input_filter=ft.NumbersOnlyInputFilter(),
+            width=85,
             max_length=2,
+            on_click=_seleccionar_texto_minuto,
+            **estilo_hora
         )
 
-        return ft.Column(
+        return ft.Row(
             controls=[
-                ft.Text("🕐 Hora (24h)", size=16, weight=ft.FontWeight.BOLD),
-                ft.Row(
-                    controls=[
-                        self.entrada_hora,
-                        ft.Text(":", size=20, weight=ft.FontWeight.BOLD),
-                        self.entrada_minuto,
-                    ],
-                    spacing=10,
+                self.entrada_hora,
+                ft.Container(
+                    content=ft.Text(":", size=20, color="#6B7280", weight=ft.FontWeight.BOLD),
+                    margin=ft.Margin(0, 15, 0, 0),  # Ajustar la posición vertical del separador
                 ),
+                self.entrada_minuto,
             ],
-            spacing=10,
+            spacing=8,
+            alignment=ft.MainAxisAlignment.START,
+            vertical_alignment=ft.CrossAxisAlignment.START,
         )
 
     def _crear_campo_juzgado(self):
-        """Campo de juzgado."""
+        """Campo de juzgado con diseño mejorado y colores claros."""
         self.entrada_juzgado = ft.TextField(
-            label="🏛️ Juzgado",
-            border_radius=10,
+            label="Juzgado o entidad",
+            hint_text="Nombre del juzgado o entidad judicial",
+            border_radius=12,
             filled=True,
-            bgcolor=ft.colors.BLUE_50,
-            prefix_icon=ft.icons.ACCOUNT_BALANCE,
+            bgcolor="#FFFFFF",  # Fondo blanco completamente claro
+            border_color="#E5E7EB",
+            focused_border_color="#1E40AF",
+            prefix_icon=ft.Icons.ACCOUNT_BALANCE_OUTLINED,
+            text_style=ft.TextStyle(size=14, color="#1F2937"),
+            label_style=ft.TextStyle(size=13, color="#6B7280"),
+            content_padding=ft.Padding(12, 10, 12, 10),
         )
         return self.entrada_juzgado
 
     def _crear_campo_realizada(self):
-        """Campo ¿Se realizó?"""
+        """Campo ¿Se realizó? con diseño mejorado y colores claros."""
         self.combo_realizada = ft.Dropdown(
-            label="✅ ¿Se realizó?",
+            label="¿Se realizó?",
+            hint_text="Seleccione SI o NO",
             options=[ft.dropdown.Option("SI"), ft.dropdown.Option("NO")],
-            width=150,
+            on_change=self._on_realizada_change,
             border_radius=10,
             filled=True,
-            bgcolor=ft.colors.BLUE_50,
-            on_change=self._on_realizada_change,
+            bgcolor="#FFFFFF",  # Fondo blanco completamente claro
+            border_color="#E5E7EB",
+            focused_border_color="#1E40AF",
+            text_style=ft.TextStyle(size=13, color="#1F2937"),
+            label_style=ft.TextStyle(size=12, color="#6B7280"),
+            content_padding=ft.Padding(12, 10, 12, 10),
         )
         return self.combo_realizada
 
     def _crear_campo_motivos(self):
-        """Campo de motivos."""
+        """Campo de motivos con diseño mejorado y checkboxes optimizados."""
         motivos_labels = [
-            "Juez",
-            "Fiscalía",
-            "Usuario",
-            "INPEC",
-            "Víctima",
-            "ICBF",
-            "Defensor Confianza",
-            "Defensor Público",
+            "Juez", "Fiscalía", "Usuario", "INPEC",
+            "Víctima", "ICBF", "Defensor Confianza", "Defensor Público",
         ]
 
         self.checkboxes_motivos = []
-
         checkboxes_row1 = []
         checkboxes_row2 = []
 
+        # Estilo mejorado para checkboxes con mejor contraste
         for i, motivo in enumerate(motivos_labels):
             checkbox = ft.Checkbox(
-                label=motivo, disabled=True, fill_color=ft.colors.RED_400
+                label=motivo,
+                disabled=True,
+                label_style=ft.TextStyle(size=13, color="#6B7280"),
+                check_color="#DC2626",
+                active_color="#FEE2E2",
             )
             self.checkboxes_motivos.append(checkbox)
 
@@ -556,78 +1098,108 @@ class VentanaPrincipal:
         return ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Text(
-                        "❌ MOTIVOS (si NO se realizó)",
-                        size=18,
-                        weight=ft.FontWeight.BOLD,
-                        color=ft.colors.RED_700,
+                    ft.Row(
+                        controls=checkboxes_row1,
+                        spacing=10,
+                        alignment=ft.MainAxisAlignment.START,
+                        wrap=False,
                     ),
-                    ft.Row(controls=checkboxes_row1, wrap=True),
-                    ft.Row(controls=checkboxes_row2, wrap=True),
+                    ft.Row(
+                        controls=checkboxes_row2,
+                        spacing=10,
+                        alignment=ft.MainAxisAlignment.START,
+                        wrap=False,
+                    ),
                 ],
-                spacing=15,
+                spacing=8,
+                alignment=ft.MainAxisAlignment.START,
             ),
-            bgcolor=ft.colors.RED_50,
-            border_radius=15,
-            border=ft.border.all(2, ft.colors.RED_200),
-            padding=20,
+            bgcolor="#FEF2F2",  # Fondo rojo muy suave
+            border_radius=10,
+            padding=ft.Padding(15, 12, 15, 12),
+            border=ft.border.all(1, "#FECACA"),  # Borde rojo suave
         )
 
     def _crear_campo_observaciones(self):
-        """Campo de observaciones."""
+        """Campo de observaciones con diseño mejorado y colores claros."""
         self.entrada_observaciones = ft.TextField(
-            label="📝 Observaciones",
+            label="Observaciones",
+            hint_text="Detalles adicionales de la audiencia...",
             multiline=True,
-            min_lines=4,
-            max_lines=6,
+            min_lines=3,
+            max_lines=5,
             border_radius=10,
             filled=True,
-            bgcolor=ft.colors.BLUE_50,
+            bgcolor="#FFFFFF",  # Fondo blanco completamente claro
+            border_color="#E5E7EB",
+            focused_border_color="#1E40AF",
+            text_style=ft.TextStyle(size=13, color="#1F2937"),
+            label_style=ft.TextStyle(size=12, color="#6B7280"),
+            content_padding=ft.Padding(12, 10, 12, 10),
+        )
+        return self.entrada_observaciones
+
+    def _crear_campo_observaciones_compacto(self):
+        """Campo de observaciones compacto para layout de dos columnas."""
+        self.entrada_observaciones = ft.TextField(
+            label="Observaciones",
+            hint_text="Detalles adicionales de la audiencia...",
+            multiline=True,
+            min_lines=2,
+            max_lines=3,  # Reducido para que quepa en pantalla
+            border_radius=10,
+            filled=True,
+            bgcolor="#FFFFFF",
+            border_color="#E5E7EB",
+            focused_border_color="#1E40AF",
+            text_style=ft.TextStyle(size=13, color="#1F2937"),
+            label_style=ft.TextStyle(size=12, color="#6B7280"),
+            content_padding=ft.Padding(12, 8, 12, 8),  # Padding reducido
         )
         return self.entrada_observaciones
 
     def _crear_botones_accion(self):
-        """Crea los botones de acción."""
+        """Crea los botones de acción con diseño profesional."""
         self.btn_guardar = ft.ElevatedButton(
             text="💾 GUARDAR AUDIENCIA",
-            icon=ft.icons.SAVE,
-            style=ft.ButtonStyle(
-                color=ft.colors.WHITE,
-                bgcolor=ft.colors.BLUE_700,
-                text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD),
-                padding=ft.padding.symmetric(horizontal=30, vertical=15),
-                shape=ft.RoundedRectangleBorder(radius=10),
-            ),
             on_click=self._on_guardar,
+            style=ft.ButtonStyle(
+                bgcolor="#1E40AF",
+                color="#FFFFFF",
+                elevation=3,
+                shape=ft.RoundedRectangleBorder(radius=12),
+                padding=ft.Padding(20, 15, 20, 15),
+                text_style=ft.TextStyle(size=16, weight=ft.FontWeight.W_600),
+            ),
             expand=True,
         )
 
         self.btn_actualizar = ft.ElevatedButton(
             text="✏️ ACTUALIZAR REGISTRO",
-            icon=ft.icons.EDIT,
-            style=ft.ButtonStyle(
-                color=ft.colors.WHITE,
-                bgcolor=ft.colors.GREEN_700,
-                text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD),
-                padding=ft.padding.symmetric(horizontal=30, vertical=15),
-                shape=ft.RoundedRectangleBorder(radius=10),
-            ),
             on_click=self._on_actualizar,
+            style=ft.ButtonStyle(
+                bgcolor="#059669",
+                color="#FFFFFF",
+                elevation=3,
+                shape=ft.RoundedRectangleBorder(radius=12),
+                padding=ft.Padding(20, 15, 20, 15),
+                text_style=ft.TextStyle(size=16, weight=ft.FontWeight.W_600),
+            ),
             expand=True,
             visible=False,
         )
 
         self.btn_cancelar_edicion = ft.ElevatedButton(
             text="❌ CANCELAR EDICIÓN",
-            icon=ft.icons.CANCEL,
-            style=ft.ButtonStyle(
-                color=ft.colors.WHITE,
-                bgcolor=ft.colors.RED_700,
-                text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD),
-                padding=ft.padding.symmetric(horizontal=30, vertical=15),
-                shape=ft.RoundedRectangleBorder(radius=10),
-            ),
             on_click=self._on_cancelar_edicion,
+            style=ft.ButtonStyle(
+                bgcolor="#DC2626",
+                color="#FFFFFF",
+                elevation=3,
+                shape=ft.RoundedRectangleBorder(radius=12),
+                padding=ft.Padding(20, 15, 20, 15),
+                text_style=ft.TextStyle(size=16, weight=ft.FontWeight.W_600),
+            ),
             expand=True,
             visible=False,
         )
@@ -641,98 +1213,271 @@ class VentanaPrincipal:
                 ],
                 spacing=15,
             ),
-            bgcolor=ft.colors.WHITE,
-            border_radius=15,
-            padding=20,
+            padding=ft.Padding(20, 15, 20, 20),
+            bgcolor="#FFFFFF",
+            border_radius=16,
             shadow=ft.BoxShadow(
-                spread_radius=1,
-                blur_radius=10,
-                color=ft.colors.with_opacity(0.1, ft.colors.BLACK),
+                spread_radius=0,
+                blur_radius=8,
+                color="#0000001A",
                 offset=ft.Offset(0, 2),
             ),
         )
 
-    def _crear_gestion_archivos(self):
-        """Crea la sección de gestión de archivos."""
-        botones = [
-            ("📄 Crear", ft.colors.PURPLE_700, self._on_crear_archivo),
-            ("🔍 Seleccionar", ft.colors.BLUE_700, self._on_seleccionar_archivo),
-            ("✏️ Editar", ft.colors.ORANGE_700, self._on_editar_registro),
-            ("🗑️ Eliminar", ft.colors.RED_700, self._on_eliminar_archivo),
-            ("💾 Descargar", ft.colors.GREEN_700, self._on_descargar_archivo),
-        ]
+    def _crear_botones_accion_compactos(self):
+        """Crea los botones de acción compactos para layout de dos columnas."""
+        self.btn_guardar = ft.ElevatedButton(
+            text="💾 GUARDAR AUDIENCIA",
+            on_click=self._on_guardar,
+            style=ft.ButtonStyle(
+                bgcolor="#1E40AF",
+                color="#FFFFFF",
+                elevation=2,
+                shape=ft.RoundedRectangleBorder(radius=10),
+                padding=ft.Padding(16, 12, 16, 12),  # Padding reducido
+                text_style=ft.TextStyle(size=14, weight=ft.FontWeight.W_600),  # Texto más pequeño
+            ),
+            expand=True,
+        )
 
-        botones_controles = []
-        for texto, color, callback in botones:
-            btn = ft.ElevatedButton(
-                text=texto,
-                style=ft.ButtonStyle(
-                    color=ft.colors.WHITE,
-                    bgcolor=color,
-                    text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
-                    padding=ft.padding.symmetric(horizontal=15, vertical=10),
-                    shape=ft.RoundedRectangleBorder(radius=8),
+        self.btn_actualizar = ft.ElevatedButton(
+            text="✏️ ACTUALIZAR REGISTRO",
+            on_click=self._on_actualizar,
+            style=ft.ButtonStyle(
+                bgcolor="#059669",
+                color="#FFFFFF",
+                elevation=2,
+                shape=ft.RoundedRectangleBorder(radius=10),
+                padding=ft.Padding(16, 12, 16, 12),
+                text_style=ft.TextStyle(size=14, weight=ft.FontWeight.W_600),
+            ),
+            expand=True,
+            visible=False,
+        )
+
+        self.btn_cancelar_edicion = ft.ElevatedButton(
+            text="❌ CANCELAR EDICIÓN",
+            on_click=self._on_cancelar_edicion,
+            style=ft.ButtonStyle(
+                bgcolor="#DC2626",
+                color="#FFFFFF",
+                elevation=2,
+                shape=ft.RoundedRectangleBorder(radius=10),
+                padding=ft.Padding(16, 12, 16, 12),
+                text_style=ft.TextStyle(size=14, weight=ft.FontWeight.W_600),
+            ),
+            expand=True,
+            visible=False,
+        )
+
+        return ft.Container(
+            content=ft.Row(
+                controls=[
+                    self.btn_guardar,
+                    self.btn_actualizar,
+                    self.btn_cancelar_edicion,
+                ],
+                spacing=10,  # Espaciado reducido
+            ),
+            padding=ft.Padding(15, 10, 15, 15),  # Padding reducido
+            bgcolor="#FFFFFF",
+            border_radius=12,
+            shadow=ft.BoxShadow(
+                spread_radius=0,
+                blur_radius=4,
+                color="#0000001A",
+                offset=ft.Offset(0, 1),
+            ),
+            expand=1,
+        )
+
+    def _crear_gestion_archivos(self):
+        """Crea la sección de gestión de archivos con diseño profesional."""
+        # Estilos para botones
+        estilo_boton_primario = ft.ButtonStyle(
+            bgcolor="#1E40AF",
+            color="#FFFFFF",
+            elevation=2,
+            shape=ft.RoundedRectangleBorder(radius=10),
+            padding=ft.Padding(16, 12, 16, 12),
+            text_style=ft.TextStyle(size=14, weight=ft.FontWeight.W_500),
+        )
+        
+        estilo_boton_secundario = ft.ButtonStyle(
+            bgcolor="#6B7280",
+            color="#FFFFFF",
+            elevation=2,
+            shape=ft.RoundedRectangleBorder(radius=10),
+            padding=ft.Padding(16, 12, 16, 12),
+            text_style=ft.TextStyle(size=14, weight=ft.FontWeight.W_500),
+        )
+        
+        estilo_boton_peligro = ft.ButtonStyle(
+            bgcolor="#DC2626",
+            color="#FFFFFF",
+            elevation=2,
+            shape=ft.RoundedRectangleBorder(radius=10),
+            padding=ft.Padding(16, 12, 16, 12),
+            text_style=ft.TextStyle(size=14, weight=ft.FontWeight.W_500),
+        )
+
+        # Primera fila de botones
+        fila1 = ft.Row(
+            controls=[
+                ft.ElevatedButton(
+                    text="📄 Crear",
+                    on_click=self._on_crear_archivo,
+                    style=estilo_boton_primario,
+                    expand=True,
                 ),
-                on_click=callback,
-                expand=True,
-            )
-            botones_controles.append(btn)
+                ft.ElevatedButton(
+                    text="📂 Seleccionar",
+                    on_click=self._on_seleccionar_archivo,
+                    style=estilo_boton_secundario,
+                    expand=True,
+                ),
+            ],
+            spacing=12,
+        )
+        
+        # Segunda fila de botones
+        fila2 = ft.Row(
+            controls=[
+                ft.ElevatedButton(
+                    text="✏️ Editar",
+                    on_click=self._on_editar_registro,
+                    style=estilo_boton_secundario,
+                    expand=True,
+                ),
+                ft.ElevatedButton(
+                    text="🗑️ Eliminar",
+                    on_click=self._on_eliminar_archivo,
+                    style=estilo_boton_peligro,
+                    expand=True,
+                ),
+                ft.ElevatedButton(
+                    text="💾 Descargar",
+                    on_click=self._on_descargar_archivo,
+                    style=estilo_boton_primario,
+                    expand=True,
+                ),
+            ],
+            spacing=12,
+        )
 
         return ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Text(
-                        "🗂️ GESTIÓN DE ARCHIVOS",
-                        size=18,
-                        weight=ft.FontWeight.BOLD,
-                        color=ft.colors.BLUE_800,
+                    ft.Row(
+                        controls=[
+                            ft.Icon(ft.Icons.FOLDER_OPEN, size=24, color="#1E40AF"),
+                            ft.Text(
+                                "GESTIÓN DE ARCHIVOS",
+                                size=18,
+                                weight=ft.FontWeight.W_700,
+                                color="#1F2937",
+                            ),
+                        ],
+                        spacing=10,
                     ),
-                    ft.Row(controls=botones_controles, spacing=10),
+                    ft.Container(height=15),  # Espaciado
+                    fila1,
+                    fila2,
                 ],
-                spacing=15,
+                spacing=12,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            bgcolor=ft.colors.WHITE,
-            border_radius=15,
-            padding=20,
+            bgcolor="#FFFFFF",
+            border_radius=16,
+            padding=ft.Padding(20, 20, 20, 20),
             shadow=ft.BoxShadow(
-                spread_radius=1,
-                blur_radius=10,
-                color=ft.colors.with_opacity(0.1, ft.colors.BLACK),
+                spread_radius=0,
+                blur_radius=8,
+                color="#0000001A",
                 offset=ft.Offset(0, 2),
             ),
         )
 
-    def _crear_info_estado(self):
-        """Crea la información de estado."""
-        self.archivo_actual_text = ft.Text(
-            "📁 Ningún archivo seleccionado",
-            size=14,
-            weight=ft.FontWeight.BOLD,
-            color=ft.colors.BLUE_700,
-        )
-
-        return ft.Container(
-            content=self.archivo_actual_text,
-            bgcolor=ft.colors.BLUE_50,
-            border_radius=10,
-            padding=15,
-            alignment=ft.alignment.center,
-        )
-
-    def _crear_footer(self):
-        """Crea el footer."""
-        return ft.Container(
-            content=ft.Text(
-                "© 2025 - Desarrollado por Jose David Bustamante Sánchez",
-                size=12,
-                color=ft.colors.GREY_600,
-                text_align=ft.TextAlign.CENTER,
-            ),
-            alignment=ft.alignment.center,
-            padding=10,
-        )
-
     # === EVENTOS ===
+
+    def _abrir_date_picker(self, e):
+        """Abre el DatePicker para seleccionar fecha."""
+        self.date_picker.open = True
+        self.page.update()
+
+    def _on_date_picker_change(self, e):
+        """Maneja el cambio de fecha en el DatePicker."""
+        if e.control.value:
+            fecha_seleccionada = e.control.value
+            fecha_formateada = fecha_seleccionada.strftime("%d/%m/%Y")
+            self.entrada_fecha.value = fecha_formateada
+            self._actualizar_campos_compatibilidad(fecha_seleccionada)
+            self.page.update()
+
+    def _on_fecha_change_tiempo_real(self, e):
+        """Maneja el formateo en tiempo real de la fecha mientras se escribe."""
+        valor = e.control.value
+        if not valor:
+            return
+            
+        # Remover caracteres no numéricos excepto /
+        valor_limpio = ''.join(c for c in valor if c.isdigit())
+        
+        # Inicializar fecha_formateada
+        fecha_formateada = valor
+        
+        # Formatear automáticamente mientras se escribe
+        if len(valor_limpio) <= 8:
+            if len(valor_limpio) <= 2:
+                # Solo día: 2 → 2, 22 → 22
+                fecha_formateada = valor_limpio
+            elif len(valor_limpio) <= 4:
+                # Día + mes: 220 → 22/0, 2207 → 22/07
+                dia = valor_limpio[:2]
+                mes = valor_limpio[2:]
+                fecha_formateada = f"{dia}/{mes}"
+            elif len(valor_limpio) <= 8:
+                # Día + mes + año: 22072 → 22/07/2, 22072025 → 22/07/2025
+                dia = valor_limpio[:2]
+                mes = valor_limpio[2:4]
+                anio = valor_limpio[4:]
+                fecha_formateada = f"{dia}/{mes}/{anio}"
+            
+            # Actualizar el campo si el formato cambió
+            if fecha_formateada != valor:
+                # Recordar la posición del cursor
+                cursor_pos = len(fecha_formateada)
+                e.control.value = fecha_formateada
+                # Establecer el cursor al final
+                e.control.selection = ft.TextSelection(cursor_pos, cursor_pos)
+                e.control.update()
+            
+            # Si tenemos una fecha completa (8 dígitos), validar y sincronizar
+            if len(valor_limpio) == 8:
+                try:
+                    fecha_obj = datetime.strptime(fecha_formateada, "%d/%m/%Y")
+                    self._actualizar_campos_compatibilidad(fecha_obj)
+                    # Sincronizar con DatePicker
+                    self.date_picker.value = fecha_obj.date()
+                except ValueError:
+                    # Fecha inválida, limpiar campos de compatibilidad
+                    self._limpiar_campos_compatibilidad()
+
+    def _on_fecha_change(self, e):
+        """Maneja cambios en el campo de fecha con formateo automático."""
+        self._on_fecha_change_tiempo_real(e)
+
+    def _actualizar_campos_compatibilidad(self, fecha_obj):
+        """Actualiza los campos virtuales para mantener compatibilidad."""
+        self.combo_dia.value = f"{fecha_obj.day:02d}"
+        self.combo_mes.value = f"{fecha_obj.month:02d}"
+        self.combo_anio.value = str(fecha_obj.year)
+
+    def _limpiar_campos_compatibilidad(self):
+        """Limpia los campos virtuales de compatibilidad."""
+        self.combo_dia.value = None
+        self.combo_mes.value = None
+        self.combo_anio.value = None
 
     def _on_tipo_change(self, e):
         """Maneja el cambio en el tipo de audiencia."""
@@ -787,15 +1532,18 @@ class VentanaPrincipal:
         self.limpiar_campos()
         self.actualizar_contador_registros()
 
-        # Establecer fecha actual
+        # Establecer fecha actual en el nuevo campo
         hoy = datetime.now()
-        self.combo_dia.value = f"{hoy.day:02d}"
-        self.combo_mes.value = f"{hoj.month:02d}"
-        self.combo_anio.value = str(hoy.year)
+        fecha_actual = f"{hoy.day:02d}/{hoy.month:02d}/{hoy.year}"
+        if hasattr(self, 'entrada_fecha') and self.entrada_fecha:
+            self.entrada_fecha.value = fecha_actual
+            self._actualizar_campos_compatibilidad(hoy)
 
         # Establecer hora por defecto
-        self.entrada_hora.value = "00"
-        self.entrada_minuto.value = "00"
+        if self.entrada_hora:
+            self.entrada_hora.value = "00"
+        if self.entrada_minuto:
+            self.entrada_minuto.value = "00"
 
         self.page.update()
 
@@ -808,11 +1556,15 @@ class VentanaPrincipal:
         if self.entrada_tipo_otra:
             self.entrada_tipo_otra.value = ""
             self.entrada_tipo_otra.visible = False
-        if self.combo_dia:
+        # Limpiar nuevo campo de fecha
+        if hasattr(self, 'entrada_fecha') and self.entrada_fecha:
+            self.entrada_fecha.value = ""
+        # Limpiar campos de compatibilidad
+        if hasattr(self, 'combo_dia'):
             self.combo_dia.value = None
-        if self.combo_mes:
+        if hasattr(self, 'combo_mes'):
             self.combo_mes.value = None
-        if self.combo_anio:
+        if hasattr(self, 'combo_anio'):
             self.combo_anio.value = None
         if self.entrada_hora:
             self.entrada_hora.value = ""
@@ -834,7 +1586,8 @@ class VentanaPrincipal:
         if tipo_audiencia == "Otra":
             tipo_audiencia = self.entrada_tipo_otra.value or ""
 
-        fecha = f"{self.combo_dia.value or '01'}/{self.combo_mes.value or '01'}/{self.combo_anio.value or '2025'}"
+        # Usar el nuevo campo de fecha
+        fecha = self.entrada_fecha.value or f"01/01/{datetime.now().year}"
 
         hora_val = self.entrada_hora.value or "00"
         minuto_val = self.entrada_minuto.value or "00"
@@ -859,33 +1612,48 @@ class VentanaPrincipal:
 
     def guardar_datos(self):
         """Guarda los datos."""
+        print("=== DEBUG: Iniciando guardar_datos ===")
+        
         if not self.archivo_excel or not self.excel_manager:
-            self._mostrar_snackbar(
-                "❌ Primero debe seleccionar un archivo", ft.colors.RED
-            )
+            print("ERROR: No hay archivo seleccionado")
+            self._mostrar_mensaje("Primero debe seleccionar un archivo")
             return
 
+        print(f"Archivo seleccionado: {self.archivo_excel}")
+
+        # AGREGAR LA LÓGICA FALTANTE:
         datos = self.obtener_datos_formulario()
+        print(f"Datos obtenidos del formulario: {datos}")
+        
         valido, mensaje = validar_todos_los_datos(datos)
+        print(f"Validación: válido={valido}, mensaje='{mensaje}'")
 
         if not valido:
-            self._mostrar_snackbar(f"❌ {mensaje}", ft.colors.RED)
+            self._mostrar_mensaje(f"Error: {mensaje}")
             return
 
         try:
+            print("Creando objeto Audiencia...")
             audiencia = Audiencia.from_form_data(datos)
+            print(f"Audiencia creada: {audiencia}")
+            
+            print("Guardando en Excel...")
             self.excel_manager.guardar_audiencia(audiencia)
+            print("Guardado exitoso. Reordenando...")
+            
             self.excel_manager.reordenar_y_guardar()
+            print("Reordenamiento exitoso.")
 
-            self._mostrar_snackbar(
-                "✅ Registro guardado correctamente", ft.colors.GREEN
-            )
+            self._mostrar_mensaje("Registro guardado correctamente")
             self.limpiar_campos()
             self._inicializar()
             self.actualizar_contador_registros()
+            print("=== DEBUG: guardar_datos completado exitosamente ===")
 
         except Exception as e:
-            self._mostrar_snackbar(f"❌ Error al guardar: {e}", ft.colors.RED)
+            print(f"ERROR en guardar_datos: {e}")
+            traceback.print_exc()
+            self._mostrar_mensaje(f"Error al guardar: {e}")
 
     def actualizar_registro(self):
         """Actualiza un registro existente."""
@@ -893,14 +1661,14 @@ class VentanaPrincipal:
             return
 
         if not self.archivo_excel or not self.excel_manager:
-            self._mostrar_snackbar("❌ No hay archivo seleccionado", ft.colors.RED)
+            self._mostrar_mensaje("No hay archivo seleccionado")
             return
 
         datos = self.obtener_datos_formulario()
         valido, mensaje = validar_todos_los_datos(datos)
 
         if not valido:
-            self._mostrar_snackbar(f"❌ {mensaje}", ft.colors.RED)
+            self._mostrar_mensaje(f"Error: {mensaje}")
             return
 
         try:
@@ -908,15 +1676,12 @@ class VentanaPrincipal:
             self.excel_manager.actualizar_audiencia(self.fila_editando, audiencia)
             self.excel_manager.reordenar_y_guardar()
 
-            self._mostrar_snackbar(
-                "✅ Registro actualizado correctamente", ft.colors.GREEN
-            )
-
+            self._mostrar_mensaje("Registro actualizado correctamente")
             self.desactivar_modo_edicion()
             self.actualizar_contador_registros()
 
         except Exception as e:
-            self._mostrar_snackbar(f"❌ Error al actualizar: {e}", ft.colors.RED)
+            self._mostrar_mensaje(f"Error al actualizar: {e}")
 
     def cancelar_edicion(self):
         """Cancela la edición."""
@@ -928,7 +1693,7 @@ class VentanaPrincipal:
         self.btn_guardar.visible = False
         self.btn_actualizar.visible = True
         self.btn_cancelar_edicion.visible = True
-        self.page.title = "🏛️ Gestor de Audiencias - EDITANDO"
+        self.page.title = "Gestor de Audiencias - EDITANDO"
         self.page.update()
 
     def desactivar_modo_edicion(self):
@@ -938,53 +1703,65 @@ class VentanaPrincipal:
         self.btn_guardar.visible = True
         self.btn_actualizar.visible = False
         self.btn_cancelar_edicion.visible = False
-        self.page.title = "🏛️ Gestor de Audiencias Judiciales"
+        self.page.title = "Gestor de Audiencias Judiciales"
         self.limpiar_campos()
         self._inicializar()
 
     def crear_nueva_copia(self):
         """Crea una nueva copia."""
-
+        print("=== DEBUG: Iniciando crear_nueva_copia ===")
+        
         def callback_crear(nombre):
+            print(f"Callback crear ejecutado con nombre: '{nombre}'")
             try:
-                crear_copia_plantilla(nombre)
-                self._mostrar_snackbar(
-                    f"✅ Archivo '{nombre}' creado.", ft.colors.GREEN
-                )
+                # Asegurar que tenga la extensión .xlsx
+                if not nombre.lower().endswith('.xlsx'):
+                    nombre_con_extension = f"{nombre}.xlsx"
+                else:
+                    nombre_con_extension = nombre
+                
+                print(f"Nombre final con extensión: '{nombre_con_extension}'")
+                print("Llamando a crear_copia_plantilla...")
+                resultado = crear_copia_plantilla(nombre_con_extension)
+                print(f"Archivo creado exitosamente en: {resultado}")
+                self._mostrar_mensaje(f"Archivo '{nombre_con_extension}' creado correctamente.")
             except FileExistsError:
-                self._mostrar_snackbar(
-                    "❌ Ya existe un archivo con ese nombre.", ft.colors.RED
-                )
+                print(f"ERROR: Archivo ya existe: {nombre}")
+                self._mostrar_mensaje("Ya existe un archivo con ese nombre.")
             except Exception as e:
-                self._mostrar_snackbar(
-                    f"❌ No se pudo crear el archivo: {e}", ft.colors.RED
-                )
+                print(f"ERROR en crear_copia_plantilla: {e}")
+                import traceback
+                traceback.print_exc()
+                self._mostrar_mensaje(f"No se pudo crear el archivo: {e}")
 
+        print("Abriendo diálogo para crear archivo...")
         DialogoCrearArchivo(self.page, callback_crear)
 
     def seleccionar_archivo_trabajo(self):
         """Selecciona archivo de trabajo."""
+        print("=== DEBUG: Iniciando seleccionar_archivo_trabajo ===")
+        
         archivos = listar_archivos_creados()
+        print(f"Archivos encontrados: {archivos}")
+        
         if not archivos:
-            self._mostrar_snackbar(
-                "ℹ️ No hay archivos de plantilla creados.", ft.colors.ORANGE
-            )
+            print("ERROR: No hay archivos de plantilla creados.")
+            self._mostrar_mensaje("No hay archivos de plantilla creados.")
             return
 
         def callback_seleccionar(nombre_archivo):
+            print(f"Callback seleccionar ejecutado con archivo: '{nombre_archivo}'")
             try:
                 self.archivo_excel = seleccionar_archivo(nombre_archivo)
                 self.excel_manager = ExcelManager(self.archivo_excel)
-                self.archivo_actual_text.value = f"📁 Trabajando con: {nombre_archivo}"
+                self.archivo_actual_text.value = nombre_archivo
+                self._mostrar_mensaje(f"Archivo seleccionado: {nombre_archivo}")
                 self.actualizar_contador_registros()
-                self._mostrar_snackbar(
-                    f"✅ Ahora trabajando con: {nombre_archivo}", ft.colors.GREEN
-                )
+                self.page.update()
             except Exception as e:
-                self._mostrar_snackbar(
-                    f"❌ No se pudo seleccionar el archivo: {e}", ft.colors.RED
-                )
+                self._mostrar_mensaje(f"Error al seleccionar archivo: {e}")
 
+        print("Abriendo ventana de selección...")
         VentanaSeleccionArchivo(
             self.page,
             "Seleccionar Archivo de Trabajo",
@@ -995,18 +1772,14 @@ class VentanaPrincipal:
     def seleccionar_registro_para_editar(self):
         """Selecciona registro para editar."""
         if not self.archivo_excel or not self.excel_manager:
-            self._mostrar_snackbar(
-                "❌ Primero debe seleccionar un archivo", ft.colors.RED
-            )
+            self._mostrar_mensaje("Primero debe seleccionar un archivo")
             return
 
         try:
             registros = self.excel_manager.leer_registros()
 
             if not registros:
-                self._mostrar_snackbar(
-                    "ℹ️ No hay registros para editar en el archivo.", ft.colors.ORANGE
-                )
+                self._mostrar_mensaje("No hay registros para editar en el archivo.")
                 return
 
             def callback_editar(fila_num, datos_completos):
@@ -1017,9 +1790,7 @@ class VentanaPrincipal:
             VentanaSeleccionRegistro(self.page, registros, callback_editar)
 
         except Exception as e:
-            self._mostrar_snackbar(
-                f"❌ Error al leer los registros: {e}", ft.colors.RED
-            )
+            self._mostrar_mensaje(f"Error al leer los registros: {e}")
 
     def cargar_datos_para_edicion(self, fila_datos):
         """Carga los datos de una fila en el formulario para editarlos."""
@@ -1039,13 +1810,13 @@ class VentanaPrincipal:
                 self.entrada_tipo_otra.value = tipo
                 self.entrada_tipo_otra.visible = True
 
-        # Fecha
+        # Fecha - usar el nuevo campo
         if len(fila_datos) > 3 and fila_datos[3] and "/" in str(fila_datos[3]):
+            fecha_str = str(fila_datos[3])
+            self.entrada_fecha.value = fecha_str
             try:
-                dia, mes, anio = str(fila_datos[3]).split("/")
-                self.combo_dia.value = dia
-                self.combo_mes.value = mes
-                self.combo_anio.value = anio
+                fecha_obj = datetime.strptime(fecha_str, "%d/%m/%Y")
+                self._actualizar_campos_compatibilidad(fecha_obj)
             except ValueError:
                 pass
 
@@ -1084,7 +1855,7 @@ class VentanaPrincipal:
         """Elimina archivo de trabajo."""
         archivos = listar_archivos_creados()
         if not archivos:
-            self._mostrar_snackbar("ℹ️ No hay archivos para eliminar.", ft.colors.ORANGE)
+            self._mostrar_mensaje("No hay archivos para eliminar.")
             return
 
         def callback_seleccionar(nombre_archivo):
@@ -1103,42 +1874,32 @@ class VentanaPrincipal:
         """Ejecuta la eliminación del archivo."""
         try:
             eliminar_archivo(nombre_archivo)
-            self._mostrar_snackbar(
-                f"✅ Archivo '{nombre_archivo}' eliminado.", ft.colors.GREEN
-            )
+            self._mostrar_mensaje(f"Archivo '{nombre_archivo}' eliminado.")
 
             # Si era el archivo actual, limpiar la selección
             if self.archivo_excel and self.archivo_excel.endswith(nombre_archivo):
                 self.archivo_excel = None
                 self.excel_manager = None
-                self.archivo_actual_text.value = "📁 Ningún archivo seleccionado"
+                self.archivo_actual_text.value = "Ningún archivo seleccionado"
                 self.actualizar_contador_registros()
 
         except Exception as e:
-            self._mostrar_snackbar(
-                f"❌ No se pudo eliminar el archivo: {e}", ft.colors.RED
-            )
+            self._mostrar_mensaje(f"No se pudo eliminar el archivo: {e}")
 
     def descargar_archivo_trabajo(self):
         """Descarga archivo de trabajo."""
         archivos = listar_archivos_creados()
         if not archivos:
-            self._mostrar_snackbar(
-                "ℹ️ No hay archivos para descargar.", ft.colors.ORANGE
-            )
+            self._mostrar_mensaje("No hay archivos para descargar.")
             return
 
         def callback_seleccionar(nombre_archivo):
             try:
                 destino = descargar_archivo(nombre_archivo)
                 if destino:
-                    self._mostrar_snackbar(
-                        f"✅ Archivo guardado en: {destino}", ft.colors.GREEN
-                    )
+                    self._mostrar_mensaje(f"Archivo guardado en: {destino}")
             except Exception as e:
-                self._mostrar_snackbar(
-                    f"❌ No se pudo descargar el archivo: {e}", ft.colors.RED
-                )
+                self._mostrar_mensaje(f"No se pudo descargar el archivo: {e}")
 
         VentanaSeleccionArchivo(
             self.page, "Descargar Archivo", archivos, callback_seleccionar
@@ -1157,12 +1918,42 @@ class VentanaPrincipal:
 
         self.page.update()
 
-    def _mostrar_snackbar(self, mensaje: str, color: str):
-        """Muestra un mensaje tipo snackbar."""
-        self.page.snack_bar = ft.SnackBar(
-            content=ft.Text(mensaje, color=ft.colors.WHITE), bgcolor=color
+    def _mostrar_mensaje(self, mensaje: str):
+        """Muestra un mensaje usando AlertDialog."""
+        print(f"=== DEBUG: Mostrando mensaje: '{mensaje}' ===")
+        
+        def cerrar_mensaje(e):
+            dlg.open = False
+            self.page.update()
+        
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Información", size=18, weight=ft.FontWeight.BOLD),
+            content=ft.Text(mensaje, size=14, color="#374151"),
+            actions=[
+                ft.ElevatedButton(
+                    "OK",
+                    on_click=cerrar_mensaje,
+                    style=ft.ButtonStyle(
+                        bgcolor="#1E40AF",
+                        color="#FFFFFF",
+                        elevation=2,
+                        shape=ft.RoundedRectangleBorder(radius=8),
+                        padding=ft.Padding(20, 10, 20, 10),
+                    ),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
         )
-        self.page.snack_bar.open = True
+        
+        self.page.overlay.append(dlg)
+        dlg.open = True
+        self.page.update()
+        print("=== DEBUG: Mensaje mostrado ===")
+    
+    def _cerrar_dialogo(self, dlg):
+        """Cierra un diálogo."""
+        dlg.open = False
         self.page.update()
 
 
@@ -1173,9 +1964,8 @@ def crear_app(page: ft.Page):
 
 def ejecutar_app():
     """Ejecuta la aplicación Flet."""
-    # Forzar modo web si hay problemas con ventana
     try:
         ft.app(target=crear_app)
     except Exception as e:
-        print("🌐 Abriendo en modo web...")
+        print("Abriendo en modo web...")
         ft.app(target=crear_app, view=ft.AppView.WEB_BROWSER, port=8080)
