@@ -7,10 +7,13 @@ import time
 # Importar reconocimiento de voz
 try:
     import speech_recognition as sr
+    import pyaudio
     SPEECH_RECOGNITION_AVAILABLE = True
-except ImportError:
+    PYAUDIO_AVAILABLE = True
+except ImportError as e:
     SPEECH_RECOGNITION_AVAILABLE = False
-    print("⚠️ Advertencia: SpeechRecognition no disponible")
+    PYAUDIO_AVAILABLE = False
+    print(f"⚠️ Advertencia: Reconocimiento de voz no disponible - {e}")
 
 # Importar configuración de privacidad
 try:
@@ -33,7 +36,21 @@ class DialogoAutocompletarIA:
         self.btn_voz = None
         self.indicador_carga = None
         self.indicador_grabacion = None
+        self.indicador_nivel_audio = None  # Nuevo: indicador de nivel de audio
         self.grabando = False
+        self.pausa_detectada = False  # Nuevo: para detección de pausas
+        self.tiempo_ultima_voz = 0  # Nuevo: timestamp de última detección de voz
+        
+        # Configuración optimizada de reconocimiento
+        if SPEECH_RECOGNITION_AVAILABLE:
+            self.recognizer = sr.Recognizer()
+            # Configuración más conservadora y estable
+            self.recognizer.energy_threshold = 300   # Menos sensible para evitar ruido
+            self.recognizer.dynamic_energy_threshold = True
+            self.recognizer.pause_threshold = 1.0    # Pausa más larga para mejor precisión
+            self.recognizer.phrase_threshold = 0.3   # Mejor detección de inicio de frase
+            self.recognizer.non_speaking_duration = 0.8  # Tiempo sin habla antes de procesar
+        
         self._crear_dialogo()
     
     def _crear_dialogo(self):
@@ -83,21 +100,27 @@ class DialogoAutocompletarIA:
             ),
         )
         
-        # Botón de reconocimiento de voz
-        self.btn_voz = ft.IconButton(
-            icon=ft.Icons.MIC,
-            tooltip="🎤 Hablar para dictar texto",
-            on_click=self._on_iniciar_grabacion,
-            style=ft.ButtonStyle(
-                bgcolor=colors["surface_primary"],
-                color=colors["primary"],
-                shape=ft.CircleBorder(),
-                padding=ft.Padding(10, 10, 10, 10),
+        # Botón de reconocimiento de voz mejorado
+        self.btn_voz = ft.Container(
+            content=ft.Icon(
+                ft.Icons.MIC if SPEECH_RECOGNITION_AVAILABLE else ft.Icons.MIC_OFF,
+                color=colors["primary"] if SPEECH_RECOGNITION_AVAILABLE else colors["text_secondary"],
+                size=24,
             ),
+            tooltip="🎤 Dictado por voz (Ctrl+M)" if SPEECH_RECOGNITION_AVAILABLE else "Reconocimiento de voz no disponible",
+            on_click=self._on_iniciar_grabacion if SPEECH_RECOGNITION_AVAILABLE else None,
+            bgcolor=colors["surface_primary"],
+            border=ft.border.all(2, colors["primary"] if SPEECH_RECOGNITION_AVAILABLE else colors["surface_border"]),
+            border_radius=25,
+            width=50,
+            height=50,
+            alignment=ft.alignment.center,
+            animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT),
+            animate_scale=ft.Animation(100, ft.AnimationCurve.BOUNCE_OUT),
             disabled=not SPEECH_RECOGNITION_AVAILABLE,
         )
         
-        # Indicador de grabación (inicialmente oculto)
+        # Indicador de grabación mejorado con animación
         self.indicador_grabacion = ft.Container(
             content=ft.Row(
                 controls=[
@@ -107,19 +130,35 @@ class DialogoAutocompletarIA:
                         size=20,
                     ),
                     ft.Text(
-                        "🎤 Hablando... (presiona para parar)",
+                        "🎤 Escuchando... (presiona para parar)",
                         size=12,
                         color=colors["error"],
                         weight=ft.FontWeight.W_500,
                     ),
+                    # Indicador de nivel de audio (nuevo)
+                    ft.Container(
+                        content=ft.Row(
+                            controls=[
+                                ft.Container(width=3, height=15, bgcolor=colors["error"], border_radius=1),
+                                ft.Container(width=3, height=10, bgcolor=colors["error_light"], border_radius=1),
+                                ft.Container(width=3, height=20, bgcolor=colors["error"], border_radius=1),
+                                ft.Container(width=3, height=8, bgcolor=colors["error_light"], border_radius=1),
+                                ft.Container(width=3, height=16, bgcolor=colors["error"], border_radius=1),
+                            ],
+                            spacing=2,
+                        ),
+                        animate=ft.Animation(1000, ft.AnimationCurve.EASE_IN_OUT),
+                    ),
                 ],
-                spacing=5,
+                spacing=8,
                 alignment=ft.MainAxisAlignment.CENTER,
             ),
             visible=False,
-            padding=ft.Padding(5, 5, 5, 5),
+            padding=ft.Padding(10, 8, 10, 8),
             bgcolor=colors["error_light"],
-            border_radius=8,
+            border_radius=12,
+            border=ft.border.all(2, colors["error"]),
+            animate_opacity=300,
         )
         
         # Indicador de carga (inicialmente oculto)
@@ -146,7 +185,7 @@ class DialogoAutocompletarIA:
             padding=ft.Padding(0, 10, 0, 10),
         )
         
-        # Contenido del diálogo con colores dinámicos
+        # Contenido del diálogo con colores dinámicos y atajos de teclado
         self.dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text(
@@ -164,8 +203,23 @@ class DialogoAutocompletarIA:
                             size=14,
                             color=colors["text_secondary"],
                         ),
-                        # Advertencia de privacidad eliminada - no mostrar mensaje del tier gratuito
-                        ft.Container(height=10),
+                        # Información de atajos de teclado
+                        ft.Container(
+                            content=ft.Row(
+                                controls=[
+                                    ft.Icon(ft.Icons.KEYBOARD, size=16, color=colors["text_secondary"]),
+                                    ft.Text(
+                                        "Atajos: Ctrl+M (Micrófono), Ctrl+Enter (Procesar), Esc (Cancelar)",
+                                        size=11,
+                                        color=colors["text_secondary"],
+                                        italic=True,
+                                    ),
+                                ],
+                                spacing=5,
+                            ),
+                            margin=ft.Margin(0, 5, 0, 10),
+                        ),
+                        ft.Container(height=5),
                         # Campo de texto con botón de voz
                         ft.Row(
                             controls=[
@@ -200,20 +254,41 @@ class DialogoAutocompletarIA:
                     tight=True,
                     spacing=5,
                 ),
-                width=550,
-                height=300,  # Aumentar un poco la altura para el indicador
+                width=580,  # Ancho aumentado para mostrar atajos
+                height=320,  # Altura aumentada
             ),
             actions=[
                 self.btn_cancelar,
                 self.btn_procesar,
             ],
             actions_alignment=ft.MainAxisAlignment.END,
+            on_dismiss=self._on_cancelar,  # Manejar Esc para cerrar
         )
+        
+        # Configurar eventos de teclado
+        self.page.on_keyboard_event = self._on_keyboard_event
         
         # Mostrar el diálogo
         self.page.overlay.append(self.dialog)
         self.dialog.open = True
         self.page.update()
+    
+    def _on_keyboard_event(self, e):
+        """Maneja los eventos de teclado para atajos."""
+        if not self.dialog or not self.dialog.open:
+            return
+            
+        # Ctrl+M para activar/desactivar micrófono
+        if e.key == "M" and e.ctrl and SPEECH_RECOGNITION_AVAILABLE:
+            self._on_iniciar_grabacion(None)
+        
+        # Ctrl+Enter para procesar
+        elif e.key == "Enter" and e.ctrl:
+            self._on_procesar(None)
+        
+        # Esc para cancelar
+        elif e.key == "Escape":
+            self._on_cancelar(None)
     
     def _mostrar_carga(self, mostrar: bool = True):
         """Muestra u oculta el indicador de carga."""
@@ -300,63 +375,212 @@ class DialogoAutocompletarIA:
             threading.Thread(target=self._procesar_voz, daemon=True).start()
     
     def _mostrar_grabacion(self, mostrar: bool = True):
-        """Muestra u oculta el indicador de grabación."""
+        """Muestra u oculta el indicador de grabación con mejores efectos visuales."""
+        if not self.indicador_grabacion or not self.btn_voz:
+            return
+            
+        colors = get_theme_colors()
+        
+        # Actualizar indicador de grabación
         self.indicador_grabacion.visible = mostrar
+        
+        # Recrear el icono del botón con el estado correcto
         if mostrar:
-            self.btn_voz.icon = ft.Icons.STOP
+            # Estado de grabación activa
+            self.btn_voz.content = ft.Icon(
+                ft.Icons.STOP,
+                color=colors["error"],
+                size=24,
+            )
+            self.btn_voz.bgcolor = colors["error_light"]
+            self.btn_voz.border = ft.border.all(2, colors["error"])
             self.btn_voz.tooltip = "🛑 Detener grabación"
-            colors = get_theme_colors()
-            self.btn_voz.style.bgcolor = colors["error_light"]
-            self.btn_voz.style.color = colors["error"]
+            self.btn_voz.scale = 1.1  # Efecto de escala
         else:
-            self.btn_voz.icon = ft.Icons.MIC
-            self.btn_voz.tooltip = "🎤 Hablar para dictar texto"
-            colors = get_theme_colors()
-            self.btn_voz.style.bgcolor = colors["surface_primary"]
-            self.btn_voz.style.color = colors["primary"]
+            # Estado normal
+            self.btn_voz.content = ft.Icon(
+                ft.Icons.MIC if SPEECH_RECOGNITION_AVAILABLE else ft.Icons.MIC_OFF,
+                color=colors["primary"] if SPEECH_RECOGNITION_AVAILABLE else colors["text_secondary"],
+                size=24,
+            )
+            self.btn_voz.bgcolor = colors["surface_primary"]
+            self.btn_voz.border = ft.border.all(2, colors["primary"] if SPEECH_RECOGNITION_AVAILABLE else colors["surface_border"])
+            self.btn_voz.tooltip = "🎤 Dictado por voz (Ctrl+M)" if SPEECH_RECOGNITION_AVAILABLE else "Reconocimiento de voz no disponible"
+            self.btn_voz.scale = 1.0
+            
         self.page.update()
     
     def _procesar_voz(self):
-        """Procesa el reconocimiento de voz."""
+        """Procesa el reconocimiento de voz con configuración optimizada para mejor precisión."""
+        if not SPEECH_RECOGNITION_AVAILABLE:
+            return
+            
         try:
-            r = sr.Recognizer()
             with sr.Microphone() as source:
-                # Ajustar para ruido ambiente
-                r.adjust_for_ambient_noise(source, duration=0.5)
+                # Calibración inicial más cuidadosa
+                print("🎤 Calibrando micrófono...")
+                self.recognizer.adjust_for_ambient_noise(source, duration=2)
+                print(f"🎤 Nivel de energía: {self.recognizer.energy_threshold}")
                 
-                # Escuchar hasta que se detenga la grabación
+                # Variables para control de duplicados
+                ultimo_texto = ""
+                tiempo_ultimo_reconocimiento = 0
+                contador_duplicados = 0
+                
+                print("🎤 ¡Listo! Habla claramente...")
+                
+                # Bucle de reconocimiento optimizado
                 while self.grabando:
                     try:
-                        # Escuchar por 5 segundos máximo
-                        audio = r.listen(source, timeout=1, phrase_time_limit=5)
+                        # Escuchar con configuración optimizada
+                        audio = self.recognizer.listen(
+                            source, 
+                            timeout=2,           # Timeout más largo para mejor calidad
+                            phrase_time_limit=6  # Frases de duración media
+                        )
                         
-                        # Convertir audio a texto
-                        texto_reconocido = r.recognize_google(audio, language='es-ES')
+                        # Intentar reconocimiento con el mejor idioma
+                        texto_reconocido = self._reconocer_con_mejor_precision(audio)
+                        tiempo_actual = time.time()
                         
-                        # Agregar texto al campo
-                        texto_actual = self.campo_texto.value or ""
-                        if texto_actual and not texto_actual.endswith(" "):
-                            texto_actual += " "
-                        self.campo_texto.value = texto_actual + texto_reconocido
-                        self.page.update()
+                        if texto_reconocido:
+                            # Filtrar duplicados
+                            if (texto_reconocido == ultimo_texto and 
+                                tiempo_actual - tiempo_ultimo_reconocimiento < 3):
+                                contador_duplicados += 1
+                                if contador_duplicados < 2:  # Permitir máximo 1 duplicado
+                                    print(f"🎤 Duplicado filtrado: {texto_reconocido}")
+                                    continue
+                            else:
+                                contador_duplicados = 0
+                            
+                            print(f"🎤 ✅ Reconocido: {texto_reconocido}")
+                            
+                            # Agregar texto al campo
+                            self._agregar_texto_inteligente(texto_reconocido)
+                            
+                            # Actualizar variables de control
+                            ultimo_texto = texto_reconocido
+                            tiempo_ultimo_reconocimiento = tiempo_actual
+                            self.tiempo_ultima_voz = tiempo_actual
                         
                     except sr.WaitTimeoutError:
-                        # No se detectó voz, continuar
+                        # Manejar timeout con indicador visual
+                        print("🎤 Esperando voz...")
+                        self._actualizar_indicador_esperando()
                         continue
+                        
                     except sr.UnknownValueError:
-                        # No se pudo entender el audio
+                        print("🎤 No se pudo entender el audio, intenta hablar más claro")
                         continue
+                        
                     except sr.RequestError as e:
-                        # Error de servicio
-                        print(f"Error de reconocimiento: {e}")
+                        print(f"❌ Error del servicio: {e}")
                         break
                         
         except Exception as e:
-            print(f"Error en reconocimiento de voz: {e}")
+            print(f"❌ Error en reconocimiento de voz: {e}")
         finally:
-            # Asegurar que se detenga la grabación
             self.grabando = False
             self._mostrar_grabacion(False)
+            print("🎤 Grabación terminada")
+    
+    def _reconocer_con_mejor_precision(self, audio) -> str:
+        """Intenta reconocer con configuración optimizada para precisión."""
+        # Orden de idiomas optimizado para Colombia
+        configuraciones = [
+            ('es-CO', 'Español Colombia'),
+            ('es-ES', 'Español España'), 
+            ('es-MX', 'Español México'),
+            ('es-AR', 'Español Argentina'),
+            ('en-US', 'Inglés')
+        ]
+        
+        for idioma, nombre in configuraciones:
+            try:
+                resultado = self.recognizer.recognize_google(
+                    audio, 
+                    language=idioma,
+                    show_all=False  # Solo el mejor resultado
+                )
+                if resultado and len(resultado.strip()) > 2:  # Filtrar resultados muy cortos
+                    print(f"🎤 Reconocido en {nombre}: {resultado}")
+                    return resultado.strip()
+            except sr.UnknownValueError:
+                continue
+            except sr.RequestError:
+                continue
+        
+        return ""
+    
+    def _agregar_texto_inteligente(self, nuevo_texto: str):
+        """Agrega texto al campo con formateo inteligente y sin duplicados."""
+        if not self.campo_texto or not nuevo_texto:
+            return
+            
+        texto_actual = self.campo_texto.value or ""
+        nuevo_texto = nuevo_texto.strip()
+        
+        if not nuevo_texto:
+            return
+        
+        # Verificar si el texto ya existe para evitar duplicados
+        if nuevo_texto.lower() in texto_actual.lower():
+            print(f"🎤 Texto ya existe, omitiendo: {nuevo_texto}")
+            return
+        
+        # Limpiar texto reconocido (remover palabras muy cortas o raras)
+        palabras = nuevo_texto.split()
+        palabras_filtradas = []
+        
+        for palabra in palabras:
+            # Filtrar palabras muy cortas o con caracteres extraños
+            if len(palabra) >= 2 and palabra.isalpha():
+                palabras_filtradas.append(palabra)
+        
+        if not palabras_filtradas:
+            return
+            
+        nuevo_texto_filtrado = " ".join(palabras_filtradas)
+        
+        # Formatear texto inteligentemente
+        if len(nuevo_texto_filtrado) > 10:  # Solo agregar punto si es una frase larga
+            if not nuevo_texto_filtrado.endswith(('.', '!', '?', ':', ',')):
+                nuevo_texto_filtrado += '.'
+        
+        # Combinar con texto existente
+        if texto_actual:
+            if not texto_actual.endswith(' '):
+                texto_actual += ' '
+            # Capitalizar si empieza una nueva oración
+            if texto_actual.endswith('. '):
+                nuevo_texto_filtrado = nuevo_texto_filtrado.capitalize()
+        else:
+            # Primera oración, capitalizar
+            nuevo_texto_filtrado = nuevo_texto_filtrado.capitalize()
+        
+        # Actualizar campo
+        texto_final = texto_actual + nuevo_texto_filtrado
+        self.campo_texto.value = texto_final
+        
+        # Scroll al final del texto
+        self.campo_texto.selection = ft.TextSelection(
+            base_offset=len(texto_final),
+            extent_offset=len(texto_final)
+        )
+        
+        self.page.update()
+        print(f"🎤 ✅ Texto agregado: '{nuevo_texto_filtrado}'")
+    
+    def _actualizar_indicador_esperando(self):
+        """Actualiza el indicador cuando está esperando voz."""
+        if self.indicador_grabacion and self.indicador_grabacion.visible:
+            # Cambiar texto del indicador
+            for control in self.indicador_grabacion.content.controls:
+                if isinstance(control, ft.Text):
+                    control.value = "🎤 Esperando... (habla o presiona para parar)"
+                    break
+            self.page.update()
     
     def _crear_advertencia_privacidad(self, colors) -> ft.Container:
         """Crea la advertencia sobre privacidad y uso de datos."""
