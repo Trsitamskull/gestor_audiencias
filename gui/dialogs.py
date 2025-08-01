@@ -1,6 +1,16 @@
 import flet as ft
 from typing import List, Tuple, Optional, Callable
 from gui.constants import get_theme_colors, is_dark_theme
+import threading
+import time
+
+# Importar reconocimiento de voz
+try:
+    import speech_recognition as sr
+    SPEECH_RECOGNITION_AVAILABLE = True
+except ImportError:
+    SPEECH_RECOGNITION_AVAILABLE = False
+    print("⚠️ Advertencia: SpeechRecognition no disponible")
 
 # Importar configuración de privacidad
 try:
@@ -20,7 +30,10 @@ class DialogoAutocompletarIA:
         self.dialog = None
         self.btn_procesar = None
         self.btn_cancelar = None
+        self.btn_voz = None
         self.indicador_carga = None
+        self.indicador_grabacion = None
+        self.grabando = False
         self._crear_dialogo()
     
     def _crear_dialogo(self):
@@ -70,6 +83,45 @@ class DialogoAutocompletarIA:
             ),
         )
         
+        # Botón de reconocimiento de voz
+        self.btn_voz = ft.IconButton(
+            icon=ft.Icons.MIC,
+            tooltip="🎤 Hablar para dictar texto",
+            on_click=self._on_iniciar_grabacion,
+            style=ft.ButtonStyle(
+                bgcolor=colors["surface_primary"],
+                color=colors["primary"],
+                shape=ft.CircleBorder(),
+                padding=ft.Padding(10, 10, 10, 10),
+            ),
+            disabled=not SPEECH_RECOGNITION_AVAILABLE,
+        )
+        
+        # Indicador de grabación (inicialmente oculto)
+        self.indicador_grabacion = ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Icon(
+                        ft.Icons.MIC,
+                        color=colors["error"],
+                        size=20,
+                    ),
+                    ft.Text(
+                        "🎤 Hablando... (presiona para parar)",
+                        size=12,
+                        color=colors["error"],
+                        weight=ft.FontWeight.W_500,
+                    ),
+                ],
+                spacing=5,
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            visible=False,
+            padding=ft.Padding(5, 5, 5, 5),
+            bgcolor=colors["error_light"],
+            border_radius=8,
+        )
+        
         # Indicador de carga (inicialmente oculto)
         self.indicador_carga = ft.Container(
             content=ft.Row(
@@ -114,7 +166,20 @@ class DialogoAutocompletarIA:
                         ),
                         # Advertencia de privacidad eliminada - no mostrar mensaje del tier gratuito
                         ft.Container(height=10),
-                        self.campo_texto,
+                        # Campo de texto con botón de voz
+                        ft.Row(
+                            controls=[
+                                ft.Container(
+                                    content=self.campo_texto,
+                                    expand=True,
+                                ),
+                                self.btn_voz,
+                            ],
+                            spacing=10,
+                            alignment=ft.MainAxisAlignment.START,
+                        ),
+                        # Indicador de grabación
+                        self.indicador_grabacion,
                         ft.Container(height=10),
                         ft.Row(
                             controls=[
@@ -217,6 +282,81 @@ class DialogoAutocompletarIA:
         """Cancela el procesamiento."""
         self.dialog.open = False
         self.page.update()
+    
+    def _on_iniciar_grabacion(self, e):
+        """Inicia o detiene el reconocimiento de voz."""
+        if not SPEECH_RECOGNITION_AVAILABLE:
+            return
+        
+        if self.grabando:
+            # Detener grabación
+            self.grabando = False
+            self._mostrar_grabacion(False)
+        else:
+            # Iniciar grabación
+            self.grabando = True
+            self._mostrar_grabacion(True)
+            # Ejecutar reconocimiento en hilo separado
+            threading.Thread(target=self._procesar_voz, daemon=True).start()
+    
+    def _mostrar_grabacion(self, mostrar: bool = True):
+        """Muestra u oculta el indicador de grabación."""
+        self.indicador_grabacion.visible = mostrar
+        if mostrar:
+            self.btn_voz.icon = ft.Icons.STOP
+            self.btn_voz.tooltip = "🛑 Detener grabación"
+            colors = get_theme_colors()
+            self.btn_voz.style.bgcolor = colors["error_light"]
+            self.btn_voz.style.color = colors["error"]
+        else:
+            self.btn_voz.icon = ft.Icons.MIC
+            self.btn_voz.tooltip = "🎤 Hablar para dictar texto"
+            colors = get_theme_colors()
+            self.btn_voz.style.bgcolor = colors["surface_primary"]
+            self.btn_voz.style.color = colors["primary"]
+        self.page.update()
+    
+    def _procesar_voz(self):
+        """Procesa el reconocimiento de voz."""
+        try:
+            r = sr.Recognizer()
+            with sr.Microphone() as source:
+                # Ajustar para ruido ambiente
+                r.adjust_for_ambient_noise(source, duration=0.5)
+                
+                # Escuchar hasta que se detenga la grabación
+                while self.grabando:
+                    try:
+                        # Escuchar por 5 segundos máximo
+                        audio = r.listen(source, timeout=1, phrase_time_limit=5)
+                        
+                        # Convertir audio a texto
+                        texto_reconocido = r.recognize_google(audio, language='es-ES')
+                        
+                        # Agregar texto al campo
+                        texto_actual = self.campo_texto.value or ""
+                        if texto_actual and not texto_actual.endswith(" "):
+                            texto_actual += " "
+                        self.campo_texto.value = texto_actual + texto_reconocido
+                        self.page.update()
+                        
+                    except sr.WaitTimeoutError:
+                        # No se detectó voz, continuar
+                        continue
+                    except sr.UnknownValueError:
+                        # No se pudo entender el audio
+                        continue
+                    except sr.RequestError as e:
+                        # Error de servicio
+                        print(f"Error de reconocimiento: {e}")
+                        break
+                        
+        except Exception as e:
+            print(f"Error en reconocimiento de voz: {e}")
+        finally:
+            # Asegurar que se detenga la grabación
+            self.grabando = False
+            self._mostrar_grabacion(False)
     
     def _crear_advertencia_privacidad(self, colors) -> ft.Container:
         """Crea la advertencia sobre privacidad y uso de datos."""
