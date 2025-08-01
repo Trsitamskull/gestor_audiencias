@@ -7,6 +7,11 @@ __pycache__/
 *.pyd
 *.pyo
 
+# Ignorar archivos de configuración sensibles
+config/config.py
+config/config_local.py
+*.env
+
 # Ignorar archivos de editor/IDE (ej. VS Code)
 .vscode/
 .idea/
@@ -15,11 +20,17 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Ignorar archivos específicos de Flet
-# Si Flet genera algún archivo temporal o de construcción que no deba versionarse, agrégalo aquí.
-# Por ejemplo, si genera un directorio 'build' o 'dist'
-# build/
-# dist/
-
-# Ignorar logs u otros archivos generados en runtime
+# Ignorar archivos generados por la aplicación
+archivos_creados/
 *.log
+
+# Ignorar archivos temporales
+*.tmp
+*.temp
+~*
+
+# Ignorar archivos de PyInstaller
+build/
+dist/
+*.spec
+GestorAudiencias_v2.0/

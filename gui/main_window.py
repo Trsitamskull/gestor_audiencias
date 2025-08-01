@@ -29,6 +29,7 @@ from gui.constants import (
     get_action_button_success,
     get_action_button_danger,
 )
+from gui.ia_config_dialog import mostrar_dialogo_configuracion_ia
 
 
 class DialogoCrearArchivo:
@@ -1187,6 +1188,7 @@ class VentanaPrincipal:
                 label_style=ft.TextStyle(size=13, color=colors["text_secondary"]),
                 check_color=colors["error"],
                 active_color=colors["error_light"],
+                on_change=lambda e, idx=i: self._on_checkbox_motivo_changed(e, idx),
             )
             self.checkboxes_motivos.append(checkbox)
 
@@ -1416,6 +1418,21 @@ class VentanaPrincipal:
             tooltip="Editar registro existente (Ctrl+E)",
         )
         
+        # Botón de IA para autocompletar
+        btn_ia_autocompletar = ft.ElevatedButton(
+            text="🤖 IA",
+            on_click=self._on_ia_autocompletar,
+            style=ft.ButtonStyle(
+                bgcolor=colors["success"],
+                color=colors["text_on_primary"],
+                elevation=2,
+                shape=ft.RoundedRectangleBorder(radius=8),
+                padding=ft.Padding(12, 8, 12, 8),
+                text_style=ft.TextStyle(size=13, weight=ft.FontWeight.W_600),
+            ),
+            tooltip="Autocompletar con IA (Ctrl+I)",
+        )
+        
         # Botones para modo edición
         btn_actualizar_sticky = ft.ElevatedButton(
             text="✅ Actualizar",
@@ -1486,6 +1503,7 @@ class VentanaPrincipal:
                             btn_nuevo_archivo,
                             btn_abrir_archivo,
                             btn_editar_registro,
+                            btn_ia_autocompletar,
                         ],
                         spacing=8,
                     ),
@@ -1711,6 +1729,15 @@ class VentanaPrincipal:
                 checkbox.value = False
         self.page.update()
 
+    def _on_checkbox_motivo_changed(self, e, checkbox_idx):
+        """Controla que solo se pueda seleccionar un checkbox de motivo."""
+        if e.control.value:  # Si se marcó este checkbox
+            # Desmarcar todos los otros checkboxes
+            for i, checkbox in enumerate(self.checkboxes_motivos):
+                if i != checkbox_idx:
+                    checkbox.value = False
+        self.page.update()
+
     def _on_guardar(self, e):
         """Guarda los datos."""
         self.guardar_datos()
@@ -1742,6 +1769,138 @@ class VentanaPrincipal:
     def _on_descargar_archivo(self, e):
         """Descarga un archivo."""
         self.descargar_archivo_trabajo()
+
+    def _on_ia_autocompletar(self, e):
+        """Abre el diálogo de autocompletado con IA o configuración si es necesario."""
+        # Verificar si la IA está configurada
+        if not self._verificar_ia_configurada():
+            # Mostrar diálogo de configuración
+            mostrar_dialogo_configuracion_ia(self.page, self._on_ia_configurada)
+        else:
+            # IA configurada, proceder con autocompletado
+            from gui.dialogs import DialogoAutocompletarIA
+            DialogoAutocompletarIA(self.page, self._on_datos_ia_recibidos)
+    
+    def _verificar_ia_configurada(self) -> bool:
+        """Verifica si la IA está configurada correctamente."""
+        try:
+            import os
+            config_path = os.path.join(os.path.dirname(__file__), "..", "config", "config.py")
+            
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    contenido = f.read()
+                    return 'OPENAI_API_KEY = "sk-' in contenido
+            return False
+        except Exception:
+            return False
+    
+    def _on_ia_configurada(self):
+        """Callback cuando la IA se configura correctamente."""
+        # Reiniciar el servicio de IA si existe
+        try:
+            # Mostrar mensaje de éxito adicional
+            self._mostrar_mensaje_atajo("✨ ¡IA configurada! Ya puedes usarla para autocompletar")
+        except Exception as e:
+            print(f"Error al reiniciar servicio de IA: {e}")
+
+    def _on_datos_ia_recibidos(self, datos: dict):
+        """Maneja los datos extraídos por la IA y los aplica al formulario."""
+        try:
+            # Aplicar radicado
+            if datos.get("radicado") and self.entrada_radicado:
+                self.entrada_radicado.value = datos["radicado"]
+            
+            # Aplicar tipo de audiencia
+            if datos.get("tipo_audiencia") and self.combo_tipo:
+                # Buscar el tipo en la lista
+                tipo_encontrado = None
+                for tipo in self.tipos_audiencia:
+                    if datos["tipo_audiencia"].lower() in tipo.lower():
+                        tipo_encontrado = tipo
+                        break
+                
+                if tipo_encontrado:
+                    self.combo_tipo.value = tipo_encontrado
+                else:
+                    # Si no se encuentra, usar "Otra"
+                    self.combo_tipo.value = "Otra"
+                    if self.entrada_tipo_otra:
+                        self.entrada_tipo_otra.value = datos["tipo_audiencia"]
+                        self.entrada_tipo_otra.visible = True
+            
+            # Aplicar fecha
+            if datos.get("fecha") and self.entrada_fecha:
+                self.entrada_fecha.value = datos["fecha"]
+            
+            # Aplicar hora
+            if datos.get("hora") and self.entrada_hora:
+                self.entrada_hora.value = datos["hora"]
+            if datos.get("minuto") and self.entrada_minuto:
+                self.entrada_minuto.value = datos["minuto"]
+            
+            # Aplicar juzgado
+            if datos.get("juzgado") and self.entrada_juzgado:
+                self.entrada_juzgado.value = datos["juzgado"]
+            
+            # Aplicar si se realizó
+            if datos.get("se_realizo") and self.combo_realizada:
+                self.combo_realizada.value = datos["se_realizo"]
+                
+                # Habilitar motivos si no se realizó
+                if datos["se_realizo"] == "NO":
+                    for checkbox in self.checkboxes_motivos:
+                        checkbox.disabled = False
+                    
+                    # Marcar SOLO UN motivo encontrado
+                    motivo_principal = datos.get("motivos", "").lower()
+                    motivos_map = {
+                        "juez": 0, "fiscalía": 1, "usuario": 2, "inpec": 3,
+                        "víctima": 4, "icbf": 5, "defensor confianza": 6, "defensor público": 7
+                    }
+                    
+                    # Solo marcar el primer motivo encontrado
+                    if motivo_principal in motivos_map:
+                        idx = motivos_map[motivo_principal]
+                        if idx < len(self.checkboxes_motivos):
+                            # Desmarcar todos primero (por si acaso)
+                            for cb in self.checkboxes_motivos:
+                                cb.value = False
+                            # Marcar solo el seleccionado
+                            self.checkboxes_motivos[idx].value = True
+            
+            # Aplicar observaciones
+            if datos.get("observaciones") and self.entrada_observaciones:
+                self.entrada_observaciones.value = datos["observaciones"]
+            
+            # Actualizar la interfaz
+            self.page.update()
+            
+            # Mostrar mensaje de éxito mejorado
+            self._mostrar_mensaje_ia_exitoso()
+            
+        except Exception as e:
+            print(f"Error aplicando datos de IA: {e}")
+            # Mostrar mensaje de error más visible
+            colors = get_theme_colors()
+            snack = ft.SnackBar(
+                content=ft.Row(
+                    controls=[
+                        ft.Icon(ft.Icons.ERROR, size=20, color=colors["text_on_primary"]),
+                        ft.Text(
+                            f"Error al aplicar datos de IA: {str(e)}", 
+                            color=colors["text_on_primary"]
+                        ),
+                    ],
+                    spacing=8,
+                ),
+                bgcolor=colors["error"],
+                duration=4000,
+                show_close_icon=True,
+            )
+            self.page.overlay.append(snack)
+            snack.open = True
+            self.page.update()
 
     def _on_keyboard_event(self, e: ft.KeyboardEvent):
         """Maneja los atajos de teclado globales."""        
@@ -1836,6 +1995,12 @@ class VentanaPrincipal:
             self._mostrar_ayuda_atajos()
             e.page.update()
             return
+        
+        # Ctrl+I - Autocompletar con IA
+        elif ctrl_pressed and key == "i":
+            self._on_ia_autocompletar(None)
+            self._mostrar_mensaje_atajo("🤖 Abriendo autocompletado con IA")
+            return
 
     def _mostrar_mensaje_atajo(self, mensaje: str):
         """Muestra un mensaje temporal cuando se usa un atajo de teclado."""
@@ -1847,6 +2012,34 @@ class VentanaPrincipal:
         )
         self.page.overlay.append(snack)
         snack.open = True
+
+    def _mostrar_mensaje_ia_exitoso(self):
+        """Muestra un mensaje de éxito especial cuando la IA completa el formulario."""
+        colors = get_theme_colors()
+        
+        # Crear un snackbar más prominente para el éxito de IA
+        snack = ft.SnackBar(
+            content=ft.Row(
+                controls=[
+                    ft.Icon(ft.Icons.SMART_TOY, size=20, color=colors["text_on_primary"]),
+                    ft.Text(
+                        "¡Formulario completado exitosamente con IA!", 
+                        size=15,
+                        weight=ft.FontWeight.W_600,
+                        color=colors["text_on_primary"]
+                    ),
+                    ft.Icon(ft.Icons.CHECK_CIRCLE, size=20, color=colors["text_on_primary"]),
+                ],
+                spacing=8,
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            bgcolor=colors["success"],
+            duration=3500,  # Duración más larga para mensaje importante
+            show_close_icon=True,
+        )
+        self.page.overlay.append(snack)
+        snack.open = True
+        self.page.update()
 
     def _mostrar_ayuda_atajos(self):
         """Muestra un diálogo con todos los atajos de teclado disponibles."""

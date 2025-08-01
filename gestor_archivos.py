@@ -10,7 +10,7 @@ def obtener_directorio_real():
         return os.path.dirname(os.path.abspath(__file__))
 
 BASE_DIR = obtener_directorio_real()
-plantilla_excel = os.path.join(BASE_DIR, "plantilla_audiencias.xlsx")
+plantilla_excel = os.path.join(BASE_DIR, "templates", "plantilla_audiencias.xlsx")
 CARPETA_ARCHIVOS = os.path.join(BASE_DIR, "archivos_creados")
 
 os.makedirs(CARPETA_ARCHIVOS, exist_ok=True)
